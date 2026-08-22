@@ -16,3 +16,7 @@
 - [x] Implement authenticated commenting and resource engagement workflows backed by the database.
 - [x] Build a student dashboard for saved resources, upload contributions, and current contributor rank.
 - [x] Add automated tests for authentication validation, post interactions, and dashboard data, then verify responsive layouts.
+- [x] Add a clear Kuppi developer credit naming Januth Nimnal.
+- [x] Refine critical Kuppi UX details around resource discovery, account entry, and user feedback.
+- [x] Assess the current architecture against a 100,000-concurrent-user target and document the production scale requirements.
+- [x] Validate the revised experience and synchronize the completed work to GitHub.

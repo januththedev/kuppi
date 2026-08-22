@@ -151,13 +151,14 @@ export async function addComment(resourceId: number, authorId: number, body: str
 export async function getDashboard(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
-  const [student, ownRows, savedRows, allStudents, allResources, allLikes] = await Promise.all([
+  const [student, ownRows, savedRows, allStudents, allResources, allLikes, rankedStudentRows] = await Promise.all([
     getStudentById(userId),
     db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(eq(resources.authorId, userId)).orderBy(desc(resources.createdAt)),
     db.select({ resource: resources, author: studentUsers }).from(resourceSaves).innerJoin(resources, eq(resourceSaves.resourceId, resources.id)).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(eq(resourceSaves.userId, userId)).orderBy(desc(resourceSaves.createdAt)),
     db.select().from(studentUsers),
     db.select({ id: resources.id, authorId: resources.authorId }).from(resources),
     db.select({ resourceId: resourceLikes.resourceId }).from(resourceLikes),
+    db.select({ total: sql<number>`count(distinct ${resources.authorId})` }).from(resources),
   ]);
   if (!student) throw new Error("Student account was not found");
   const { scores, ranking } = buildContributionRanking(allStudents.map((person) => person.id), allResources, allLikes);
@@ -171,7 +172,7 @@ export async function getDashboard(userId: number) {
       savedCount: savedRows.length,
       contributionScore: scores.get(userId) ?? 0,
       currentRank: currentRank >= 0 ? currentRank + 1 : null,
-      rankedStudents: ranking.length,
+      rankedStudents: Number(rankedStudentRows[0]?.total ?? 0),
     },
   };
 }
