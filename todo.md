@@ -29,3 +29,5 @@
 - [x] Add dashboard controls to filter saved resources and contributions by subject and study level.
 - [x] Add dashboard sorting options for newest, most saved, most liked, and most discussed resources.
 - [x] Add filtered empty states, automated sorting coverage, and responsive verification for the dashboard controls.
+- [x] Add a dashboard keyword search across resource titles, descriptions, files, and subject details.
+- [x] Add search-aware empty states and automated coverage for dashboard keyword matching.
