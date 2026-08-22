@@ -24,6 +24,10 @@ export function normalizeUsername(value: string) {
   return value.trim().toLowerCase();
 }
 
+export function normalizePhoneNumber(value: string) {
+  return value.trim().replace(/[()\s-]/g, "");
+}
+
 export function registrationValidationMessage(input: {
   fullName: string;
   contactNumber: string;
@@ -37,6 +41,12 @@ export function registrationValidationMessage(input: {
   if (input.password.length < 8) return "Your password must be at least 8 characters.";
   if (input.password !== input.confirmPassword) return "Passwords do not match.";
   return null;
+}
+
+export function matchesRecoveryIdentity(student: { fullName: string; contactNumber: string; username: string }, input: { fullName: string; contactNumber: string; username: string }) {
+  return student.fullName.trim().toLocaleLowerCase() === input.fullName.trim().toLocaleLowerCase()
+    && normalizePhoneNumber(student.contactNumber) === normalizePhoneNumber(input.contactNumber)
+    && student.username === normalizeUsername(input.username);
 }
 
 export async function hashPassword(password: string) {

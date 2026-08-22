@@ -20,3 +20,9 @@
 - [x] Refine critical Kuppi UX details around resource discovery, account entry, and user feedback.
 - [x] Assess the current architecture against a 100,000-concurrent-user target and document the production scale requirements.
 - [x] Validate the revised experience and synchronize the completed work to GitHub.
+- [x] Add safe in-browser previews for uploaded documents and media where supported, with fallback download behaviour.
+- [x] Add report actions and database records for resources and comments.
+- [x] Build an administrator moderation dashboard for reported resources and comments, including resolution actions.
+- [x] Add identity-matched password recovery that resets the password after matching full name, contact number, and username.
+- [x] Remove SMS verification from sign-up and use the stored contact number only as part of the recovery identity match.
+- [x] Add automated tests for preview selection, moderation actions, and identity-matched recovery, then verify the responsive student interface.

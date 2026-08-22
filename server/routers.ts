@@ -14,12 +14,15 @@ import {
   publicStudent,
   toggleResourceLike,
   toggleResourceSave,
+  updateStudentPassword,
   updateStudentSignIn,
 } from "./kuppiDb";
 import {
   clearStudentSession,
   getStudentFromRequest,
   hashPassword,
+  matchesRecoveryIdentity,
+  normalizePhoneNumber,
   normalizeUsername,
   registrationValidationMessage,
   setStudentSession,
@@ -27,10 +30,17 @@ import {
 } from "./kuppiAuth";
 import { storagePut } from "./storage";
 import { MAX_BASE64_LENGTH, safeStorageName, validateResourceUpload } from "./resourceSafety";
+import { createContentReport, listModerationReports, resolveModerationReport } from "./moderationDb";
 
 async function requireStudent(request: Parameters<typeof getStudentFromRequest>[0]) {
   const student = await getStudentFromRequest(request);
   if (!student) throw new TRPCError({ code: "UNAUTHORIZED", message: "Please sign in to continue." });
+  return student;
+}
+
+async function requireAdmin(request: Parameters<typeof getStudentFromRequest>[0]) {
+  const student = await requireStudent(request);
+  if (student.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Administrator access is required." });
   return student;
 }
 
@@ -62,7 +72,7 @@ export const appRouter = router({
       if (validation) throw new TRPCError({ code: "BAD_REQUEST", message: validation });
       const username = normalizeUsername(input.username);
       if (await getStudentByUsername(username)) throw new TRPCError({ code: "CONFLICT", message: "That username is already taken." });
-      const student = await createStudent({ fullName: input.fullName.trim(), contactNumber: input.contactNumber.trim(), username, passwordHash: await hashPassword(input.password) });
+      const student = await createStudent({ fullName: input.fullName.trim(), contactNumber: normalizePhoneNumber(input.contactNumber), username, passwordHash: await hashPassword(input.password) });
       await setStudentSession(ctx.res, student);
       return publicStudent(student);
     }),
@@ -72,6 +82,13 @@ export const appRouter = router({
       await updateStudentSignIn(student.id);
       await setStudentSession(ctx.res, student);
       return publicStudent(student);
+    }),
+    recoverPassword: publicProcedure.input(z.object({ fullName: z.string().trim().min(2).max(120), contactNumber: z.string().trim().min(7).max(32), username: z.string().trim().min(3).max(32), password: z.string().min(8).max(128), confirmPassword: z.string().min(8).max(128) })).mutation(async ({ input }) => {
+      if (input.password !== input.confirmPassword) throw new TRPCError({ code: "BAD_REQUEST", message: "Passwords do not match." });
+      const student = await getStudentByUsername(normalizeUsername(input.username));
+      if (!student || !matchesRecoveryIdentity(student, input)) throw new TRPCError({ code: "BAD_REQUEST", message: "The recovery details could not be verified." });
+      await updateStudentPassword(student.id, await hashPassword(input.password));
+      return { success: true } as const;
     }),
     logout: publicProcedure.mutation(({ ctx }) => {
       clearStudentSession(ctx.res);
@@ -121,6 +138,22 @@ export const appRouter = router({
     mine: publicProcedure.query(async ({ ctx }) => {
       const student = await requireStudent(ctx.req);
       return getDashboard(student.id);
+    }),
+  }),
+  moderation: router({
+    report: publicProcedure.input(z.object({ targetType: z.enum(["resource", "comment"]), targetId: z.number().int().positive(), reason: z.string().trim().min(3).max(120), details: z.string().trim().max(2000).optional() })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      await createContentReport({ reporterId: student.id, ...input });
+      return { success: true } as const;
+    }),
+    list: publicProcedure.query(async ({ ctx }) => {
+      await requireAdmin(ctx.req);
+      return listModerationReports();
+    }),
+    resolve: publicProcedure.input(z.object({ reportId: z.number().int().positive(), action: z.enum(["dismiss", "hide", "remove"]) })).mutation(async ({ ctx, input }) => {
+      const student = await requireAdmin(ctx.req);
+      await resolveModerationReport({ reportId: input.reportId, reviewerId: student.id, action: input.action });
+      return { success: true } as const;
     }),
   }),
 });

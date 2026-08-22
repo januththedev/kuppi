@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import {
   resourceComments,
+  contentReports,
   resourceLikes,
   resources,
   resourceSaves,
@@ -30,7 +31,7 @@ export async function getStudentByUsername(username: string) {
   return result[0] ?? null;
 }
 
-export async function createStudent(input: { fullName: string; contactNumber: string; username: string; passwordHash: string }) {
+export async function createStudent(input: { fullName: string; contactNumber: string; username: string; passwordHash: string; contactVerifiedAt?: Date }) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
   await db.insert(studentUsers).values(input);
@@ -43,6 +44,12 @@ export async function updateStudentSignIn(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
   await db.update(studentUsers).set({ lastSignedIn: new Date() }).where(eq(studentUsers.id, id));
+}
+
+export async function updateStudentPassword(id: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  await db.update(studentUsers).set({ passwordHash }).where(eq(studentUsers.id, id));
 }
 
 function countMap(rows: { resourceId: number; total: unknown }[]) {
@@ -88,14 +95,15 @@ export async function listResources(input: { query?: string; subject?: string; s
   }
   if (input.subject && input.subject !== "All") clauses.push(eq(resources.subject, input.subject));
   if (input.studyLevel && input.studyLevel !== "All") clauses.push(eq(resources.studyLevel, input.studyLevel));
-  const rows = await db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(clauses.length ? and(...clauses) : undefined).orderBy(desc(resources.createdAt)).limit(60);
+  clauses.push(eq(resources.moderationStatus, "published"));
+  const rows = await db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(and(...clauses)).orderBy(desc(resources.createdAt)).limit(60);
   return decorateResources(rows, viewerId);
 }
 
 export async function getResourceById(id: number, viewerId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
-  const rows = await db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(eq(resources.id, id)).limit(1);
+  const rows = await db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(and(eq(resources.id, id), eq(resources.moderationStatus, "published"))).limit(1);
   const decorated = await decorateResources(rows, viewerId);
   return decorated[0] ?? null;
 }
@@ -136,7 +144,7 @@ export async function toggleResourceSave(resourceId: number, userId: number) {
 export async function listComments(resourceId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
-  const rows = await db.select({ comment: resourceComments, author: studentUsers }).from(resourceComments).innerJoin(studentUsers, eq(resourceComments.authorId, studentUsers.id)).where(eq(resourceComments.resourceId, resourceId)).orderBy(desc(resourceComments.createdAt));
+  const rows = await db.select({ comment: resourceComments, author: studentUsers }).from(resourceComments).innerJoin(studentUsers, eq(resourceComments.authorId, studentUsers.id)).where(and(eq(resourceComments.resourceId, resourceId), eq(resourceComments.moderationStatus, "published"))).orderBy(desc(resourceComments.createdAt));
   return rows.map(({ comment, author }) => ({ ...comment, author: publicStudent(author) }));
 }
 
