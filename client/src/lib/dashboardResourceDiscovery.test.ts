@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterAndSortDashboardResources } from "./dashboardResourceDiscovery";
+import { filterAndSortDashboardResources, onlyOwnUploadedResources } from "./dashboardResourceDiscovery";
 
 const resources = [
   { id: 1, title: "Electric fields review", description: "Practice questions for motion", originalFileName: "physics-review.pdf", subject: "Physics", studyLevel: "A/L", createdAt: "2026-01-02", likeCount: 8, saveCount: 2, commentCount: 0 },
@@ -20,5 +20,11 @@ describe("filterAndSortDashboardResources", () => {
   it("finds notes through titles, descriptions, and filenames", () => {
     expect(filterAndSortDashboardResources(resources, "mechanisms", "All", "All", "newest").map((resource) => resource.id)).toEqual([2]);
     expect(filterAndSortDashboardResources(resources, "field-notes", "All", "All", "newest").map((resource) => resource.id)).toEqual([3]);
+  });
+
+  it("limits saved resources to the student’s own uploads when requested", () => {
+    const owned = onlyOwnUploadedResources([{ id: 1, author: { username: "januth" } }, { id: 2, author: { username: "another_student" } }], "januth", true);
+    expect(owned.map((resource) => resource.id)).toEqual([1]);
+    expect(onlyOwnUploadedResources(owned, "januth", false)).toEqual(owned);
   });
 });

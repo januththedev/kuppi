@@ -12,6 +12,10 @@ export type DashboardResource = {
   commentCount: number;
 };
 
+export function onlyOwnUploadedResources<T extends { author?: { username: string } }>(resources: T[], username: string, enabled: boolean) {
+  return enabled ? resources.filter((resource) => resource.author?.username === username) : resources;
+}
+
 export function filterAndSortDashboardResources<T extends DashboardResource>(resources: T[], query: string, subject: string, studyLevel: string, sort: DashboardSort): T[] {
   const normalizedQuery = query.trim().toLowerCase();
   const filtered = resources.filter((resource) => {

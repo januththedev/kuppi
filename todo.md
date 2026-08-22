@@ -31,3 +31,6 @@
 - [x] Add filtered empty states, automated sorting coverage, and responsive verification for the dashboard controls.
 - [x] Add a dashboard keyword search across resource titles, descriptions, files, and subject details.
 - [x] Add search-aware empty states and automated coverage for dashboard keyword matching.
+- [x] Add privacy-conscious recent dashboard search history with quick reuse and clearing controls.
+- [x] Add an only-my-uploads toggle that focuses dashboard results on the student’s own contributions.
+- [x] Add automated coverage and responsive verification for recent searches and contribution-only filtering.
