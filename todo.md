@@ -44,3 +44,8 @@
 - [x] Integrate OpenRouter free-model MCQ generation using a self-hosted server environment key and strict quiz-generation prompt.
 - [x] Show an AI quiz entry point beside eligible PDF and image resources, with quiz-taking and review states.
 - [x] Test the progress and quiz workflows, summarize the completed product work, and synchronize the update to GitHub.
+- [x] Extract readable source text from eligible PDF and image resources before OpenRouter MCQ generation.
+- [x] Add extraction guards, source-quality feedback, and automated coverage for quiz input preparation.
+- [x] Complete and verify the extracted-source PDF and image quiz-generation workflow.
+- [x] Add focused bonus study improvements to the reading and quiz experience.
+- [x] Test, save, and summarize the resumed Kuppi improvements.

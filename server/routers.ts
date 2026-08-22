@@ -38,6 +38,7 @@ import { MAX_BASE64_LENGTH, safeStorageName, validateResourceUpload } from "./re
 import { createContentReport, listModerationReports, resolveModerationReport } from "./moderationDb";
 import { generateOpenRouterMcq } from "./openRouterQuiz";
 import { createQuiz, recordQuizAttempt, upsertProgress } from "./quizDb";
+import { extractResourceText } from "./resourceTextExtraction";
 
 async function requireStudent(request: Parameters<typeof getStudentFromRequest>[0]) {
   const student = await getStudentFromRequest(request);
@@ -185,18 +186,22 @@ export const appRouter = router({
       const resource = await getResourceById(input.resourceId, student.id);
       if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
       if (!(resource.mimeType === "application/pdf" || resource.mimeType.startsWith("image/"))) throw new TRPCError({ code: "BAD_REQUEST", message: "AI quizzes are available for PDF and image resources only." });
-      const result = await generateOpenRouterMcq(`Resource title: ${resource.title}\nSubject: ${resource.subject}\nStudy level: ${resource.studyLevel}\nStudent description: ${resource.description}\nCreate MCQs only from this supplied context.`);
+      const extractedText = await extractResourceText(resource);
+      if (extractedText.length < 120) throw new TRPCError({ code: "BAD_REQUEST", message: "Kuppi could not extract enough readable study text from this resource to make a reliable quiz." });
+      const result = await generateOpenRouterMcq(`Resource title: ${resource.title}\nSubject: ${resource.subject}\nStudy level: ${resource.studyLevel}\nExtracted resource text: ${extractedText}\nCreate MCQs only from this supplied context.`);
       const quiz = await createQuiz(resource.id, student.id, JSON.stringify(result.questions), result.questions.length);
-      return { id: quiz?.id, questions: result.questions };
+      return { id: quiz?.id, questions: result.questions, extractedChars: extractedText.length };
     }),
     generateQuizByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024) })).mutation(async ({ ctx, input }) => {
       const student = await requireStudent(ctx.req);
       const resource = await getResourceByStorageUrl(input.storageUrl, student.id);
       if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
       if (!(resource.mimeType === "application/pdf" || resource.mimeType.startsWith("image/"))) throw new TRPCError({ code: "BAD_REQUEST", message: "AI quizzes are available for PDF and image resources only." });
-      const result = await generateOpenRouterMcq(`Resource title: ${resource.title}\nSubject: ${resource.subject}\nStudy level: ${resource.studyLevel}\nStudent description: ${resource.description}\nCreate MCQs only from this supplied context.`);
+      const extractedText = await extractResourceText(resource);
+      if (extractedText.length < 120) throw new TRPCError({ code: "BAD_REQUEST", message: "Kuppi could not extract enough readable study text from this resource to make a reliable quiz." });
+      const result = await generateOpenRouterMcq(`Resource title: ${resource.title}\nSubject: ${resource.subject}\nStudy level: ${resource.studyLevel}\nExtracted resource text: ${extractedText}\nCreate MCQs only from this supplied context.`);
       const quiz = await createQuiz(resource.id, student.id, JSON.stringify(result.questions), result.questions.length);
-      return { id: quiz?.id, questions: result.questions };
+      return { id: quiz?.id, questions: result.questions, extractedChars: extractedText.length };
     }),
     submitQuiz: publicProcedure.input(z.object({ quizId: z.number().int().positive(), answers: z.array(z.number().int().min(0).max(3)).min(1), correctIndexes: z.array(z.number().int().min(0).max(3)).min(1) })).mutation(async ({ ctx, input }) => {
       const student = await requireStudent(ctx.req);
