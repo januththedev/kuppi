@@ -101,6 +101,20 @@ export const resourceLikes = mysqlTable(
   (table) => [uniqueIndex("resource_like_unique").on(table.resourceId, table.userId)],
 );
 
+export const resourceViews = mysqlTable(
+  "resourceViews",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    resourceId: int("resourceId").notNull().references(() => resources.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => studentUsers.id, { onDelete: "cascade" }),
+    viewedAt: timestamp("viewedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("resource_view_unique").on(table.resourceId, table.userId),
+    index("resource_views_user_date_idx").on(table.userId, table.viewedAt),
+  ],
+);
+
 export const contentReports = mysqlTable(
   "contentReports",
   {

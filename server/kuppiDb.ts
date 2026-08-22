@@ -1,10 +1,11 @@
-import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, ne, or, sql } from "drizzle-orm";
 import {
   resourceComments,
   contentReports,
   resourceLikes,
   resources,
   resourceSaves,
+  resourceViews,
   studentUsers,
   type Resource,
 } from "../drizzle/schema";
@@ -108,6 +109,38 @@ export async function getResourceById(id: number, viewerId?: number) {
   return decorated[0] ?? null;
 }
 
+export async function listRelatedResources(resourceId: number, viewerId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  const current = await db.select({ subject: resources.subject, studyLevel: resources.studyLevel }).from(resources).where(and(eq(resources.id, resourceId), eq(resources.moderationStatus, "published"))).limit(1);
+  if (!current[0]) return [];
+  const rows = await db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(and(eq(resources.moderationStatus, "published"), ne(resources.id, resourceId), eq(resources.subject, current[0].subject), eq(resources.studyLevel, current[0].studyLevel))).orderBy(desc(resources.createdAt)).limit(4);
+  return decorateResources(rows, viewerId);
+}
+
+export async function markResourceViewed(resourceId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  const existing = await db.select({ id: resourceViews.id }).from(resourceViews).where(and(eq(resourceViews.resourceId, resourceId), eq(resourceViews.userId, userId))).limit(1);
+  if (existing[0]) await db.update(resourceViews).set({ viewedAt: new Date() }).where(eq(resourceViews.id, existing[0].id));
+  else await db.insert(resourceViews).values({ resourceId, userId });
+}
+
+export async function listRelatedResourcesByStorageUrl(storageUrl: string, viewerId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  const current = await db.select({ id: resources.id }).from(resources).where(and(eq(resources.storageUrl, storageUrl), eq(resources.moderationStatus, "published"))).limit(1);
+  return current[0] ? listRelatedResources(current[0].id, viewerId) : [];
+}
+
+export async function markResourceViewedByStorageUrl(storageUrl: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  const resource = await db.select({ id: resources.id }).from(resources).where(and(eq(resources.storageUrl, storageUrl), eq(resources.moderationStatus, "published"))).limit(1);
+  if (!resource[0]) throw new Error("That resource is no longer available.");
+  await markResourceViewed(resource[0].id, userId);
+}
+
 export async function createResource(input: Omit<typeof resources.$inferInsert, "id" | "createdAt" | "updatedAt">) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
@@ -159,10 +192,11 @@ export async function addComment(resourceId: number, authorId: number, body: str
 export async function getDashboard(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
-  const [student, ownRows, savedRows, allStudents, allResources, allLikes, rankedStudentRows] = await Promise.all([
+  const [student, ownRows, savedRows, recentViewRows, allStudents, allResources, allLikes, rankedStudentRows] = await Promise.all([
     getStudentById(userId),
     db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(eq(resources.authorId, userId)).orderBy(desc(resources.createdAt)),
     db.select({ resource: resources, author: studentUsers }).from(resourceSaves).innerJoin(resources, eq(resourceSaves.resourceId, resources.id)).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(eq(resourceSaves.userId, userId)).orderBy(desc(resourceSaves.createdAt)),
+    db.select({ resource: resources, author: studentUsers }).from(resourceViews).innerJoin(resources, eq(resourceViews.resourceId, resources.id)).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(and(eq(resourceViews.userId, userId), eq(resources.moderationStatus, "published"))).orderBy(desc(resourceViews.viewedAt)).limit(8),
     db.select().from(studentUsers),
     db.select({ id: resources.id, authorId: resources.authorId }).from(resources),
     db.select({ resourceId: resourceLikes.resourceId }).from(resourceLikes),
@@ -175,6 +209,7 @@ export async function getDashboard(userId: number) {
     student: publicStudent(student),
     contributions: await decorateResources(ownRows, userId),
     saved: await decorateResources(savedRows, userId),
+    recentlyViewed: await decorateResources(recentViewRows, userId),
     stats: {
       uploadCount: ownRows.length,
       savedCount: savedRows.length,

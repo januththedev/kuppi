@@ -34,3 +34,7 @@
 - [x] Add privacy-conscious recent dashboard search history with quick reuse and clearing controls.
 - [x] Add an only-my-uploads toggle that focuses dashboard results on the student’s own contributions.
 - [x] Add automated coverage and responsive verification for recent searches and contribution-only filtering.
+- [x] Add related-note recommendations in the resource document viewer using real shared-resource metadata.
+- [x] Add a recently viewed notes section to the student dashboard with resume links.
+- [x] Add pin and unpin controls for dashboard recent searches, keeping pinned queries at the top.
+- [x] Add automated coverage and responsive validation for recommendations, recent views, and pinned search history.

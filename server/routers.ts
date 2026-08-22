@@ -10,7 +10,11 @@ import {
   getResourceById,
   getStudentByUsername,
   listComments,
+  listRelatedResources,
+  listRelatedResourcesByStorageUrl,
   listResources,
+  markResourceViewed,
+  markResourceViewedByStorageUrl,
   publicStudent,
   toggleResourceLike,
   toggleResourceSave,
@@ -105,6 +109,25 @@ export const appRouter = router({
       const resource = await getResourceById(input.id, viewer?.id);
       if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
       return resource;
+    }),
+    related: publicProcedure.input(idInput).query(async ({ ctx, input }) => {
+      const viewer = await getStudentFromRequest(ctx.req);
+      return listRelatedResources(input.id, viewer?.id);
+    }),
+    relatedByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024) })).query(async ({ ctx, input }) => {
+      const viewer = await getStudentFromRequest(ctx.req);
+      return listRelatedResourcesByStorageUrl(input.storageUrl, viewer?.id);
+    }),
+    markViewed: publicProcedure.input(idInput).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      if (!await getResourceById(input.id, student.id)) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
+      await markResourceViewed(input.id, student.id);
+      return { success: true } as const;
+    }),
+    markViewedByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024) })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      await markResourceViewedByStorageUrl(input.storageUrl, student.id);
+      return { success: true } as const;
     }),
     create: publicProcedure.input(z.object({ title: z.string().trim().min(3).max(180), description: z.string().trim().min(3).max(5000), subject: z.string().trim().min(2).max(80), studyLevel: z.string().trim().min(2).max(40), stream: z.string().trim().max(80).optional(), examRelevance: z.string().trim().max(100).optional(), originalFileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().max(160).optional(), dataBase64: z.string().min(1).max(MAX_BASE64_LENGTH) })).mutation(async ({ ctx, input }) => {
       const student = await requireStudent(ctx.req);
