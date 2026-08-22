@@ -26,3 +26,6 @@
 - [x] Add identity-matched password recovery that resets the password after matching full name, contact number, and username.
 - [x] Remove SMS verification from sign-up and use the stored contact number only as part of the recovery identity match.
 - [x] Add automated tests for preview selection, moderation actions, and identity-matched recovery, then verify the responsive student interface.
+- [x] Add dashboard controls to filter saved resources and contributions by subject and study level.
+- [x] Add dashboard sorting options for newest, most saved, most liked, and most discussed resources.
+- [x] Add filtered empty states, automated sorting coverage, and responsive verification for the dashboard controls.
