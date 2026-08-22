@@ -8,3 +8,11 @@
 - [x] Add authenticated publishing and account prompts for restricted actions.
 - [x] Add contributor profile previews and resource detail presentation.
 - [x] Write core interaction tests and verify desktop and mobile layouts.
+- [x] Remove all seeded study resources, invented contributors, and fabricated engagement figures from the public experience.
+- [x] Add a secure username/password registration flow with full name, contact number, live username availability, and password confirmation.
+- [x] Add database tables and protected server procedures for user profiles, real resource posts, saved posts, likes, comments, and rankings.
+- [x] Add validated real-file uploads with durable storage references and safe browser download/open behaviour.
+- [x] Replace simulated discovery with an empty real-content feed, searching, filtering, and resource detail views.
+- [x] Implement authenticated commenting and resource engagement workflows backed by the database.
+- [x] Build a student dashboard for saved resources, upload contributions, and current contributor rank.
+- [x] Add automated tests for authentication validation, post interactions, and dashboard data, then verify responsive layouts.
