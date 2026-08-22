@@ -8,6 +8,7 @@ import {
   createStudent,
   getDashboard,
   getResourceById,
+  getResourceByStorageUrl,
   getStudentByUsername,
   listComments,
   listRelatedResources,
@@ -35,6 +36,8 @@ import {
 import { storagePut } from "./storage";
 import { MAX_BASE64_LENGTH, safeStorageName, validateResourceUpload } from "./resourceSafety";
 import { createContentReport, listModerationReports, resolveModerationReport } from "./moderationDb";
+import { generateOpenRouterMcq } from "./openRouterQuiz";
+import { createQuiz, recordQuizAttempt, upsertProgress } from "./quizDb";
 
 async function requireStudent(request: Parameters<typeof getStudentFromRequest>[0]) {
   const student = await getStudentFromRequest(request);
@@ -161,6 +164,46 @@ export const appRouter = router({
     mine: publicProcedure.query(async ({ ctx }) => {
       const student = await requireStudent(ctx.req);
       return getDashboard(student.id);
+    }),
+  }),
+  learning: router({
+    updateProgress: publicProcedure.input(z.object({ resourceId: z.number().int().positive(), progressPercent: z.number().int().min(0).max(100), lastPage: z.number().int().min(1).max(100000) })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      if (!await getResourceById(input.resourceId, student.id)) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
+      await upsertProgress(input.resourceId, student.id, input.progressPercent, input.lastPage);
+      return { success: true } as const;
+    }),
+    updateProgressByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024), progressPercent: z.number().int().min(0).max(100), lastPage: z.number().int().min(1).max(100000) })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      const resource = await getResourceByStorageUrl(input.storageUrl, student.id);
+      if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
+      await upsertProgress(resource.id, student.id, input.progressPercent, input.lastPage);
+      return { success: true } as const;
+    }),
+    generateQuiz: publicProcedure.input(z.object({ resourceId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      const resource = await getResourceById(input.resourceId, student.id);
+      if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
+      if (!(resource.mimeType === "application/pdf" || resource.mimeType.startsWith("image/"))) throw new TRPCError({ code: "BAD_REQUEST", message: "AI quizzes are available for PDF and image resources only." });
+      const result = await generateOpenRouterMcq(`Resource title: ${resource.title}\nSubject: ${resource.subject}\nStudy level: ${resource.studyLevel}\nStudent description: ${resource.description}\nCreate MCQs only from this supplied context.`);
+      const quiz = await createQuiz(resource.id, student.id, JSON.stringify(result.questions), result.questions.length);
+      return { id: quiz?.id, questions: result.questions };
+    }),
+    generateQuizByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024) })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      const resource = await getResourceByStorageUrl(input.storageUrl, student.id);
+      if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
+      if (!(resource.mimeType === "application/pdf" || resource.mimeType.startsWith("image/"))) throw new TRPCError({ code: "BAD_REQUEST", message: "AI quizzes are available for PDF and image resources only." });
+      const result = await generateOpenRouterMcq(`Resource title: ${resource.title}\nSubject: ${resource.subject}\nStudy level: ${resource.studyLevel}\nStudent description: ${resource.description}\nCreate MCQs only from this supplied context.`);
+      const quiz = await createQuiz(resource.id, student.id, JSON.stringify(result.questions), result.questions.length);
+      return { id: quiz?.id, questions: result.questions };
+    }),
+    submitQuiz: publicProcedure.input(z.object({ quizId: z.number().int().positive(), answers: z.array(z.number().int().min(0).max(3)).min(1), correctIndexes: z.array(z.number().int().min(0).max(3)).min(1) })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      const total = Math.min(input.answers.length, input.correctIndexes.length);
+      const score = input.answers.slice(0, total).filter((answer, index) => answer === input.correctIndexes[index]).length;
+      await recordQuizAttempt(input.quizId, student.id, JSON.stringify(input.answers.slice(0, total)), score, total);
+      return { score, total };
     }),
   }),
   moderation: router({

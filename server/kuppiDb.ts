@@ -5,6 +5,7 @@ import {
   resourceLikes,
   resources,
   resourceSaves,
+  resourceProgress,
   resourceViews,
   studentUsers,
   type Resource,
@@ -109,6 +110,14 @@ export async function getResourceById(id: number, viewerId?: number) {
   return decorated[0] ?? null;
 }
 
+export async function getResourceByStorageUrl(storageUrl: string, viewerId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  const rows = await db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(and(eq(resources.storageUrl, storageUrl), eq(resources.moderationStatus, "published"))).limit(1);
+  const decorated = await decorateResources(rows, viewerId);
+  return decorated[0] ?? null;
+}
+
 export async function listRelatedResources(resourceId: number, viewerId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
@@ -192,11 +201,12 @@ export async function addComment(resourceId: number, authorId: number, body: str
 export async function getDashboard(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
-  const [student, ownRows, savedRows, recentViewRows, allStudents, allResources, allLikes, rankedStudentRows] = await Promise.all([
+  const [student, ownRows, savedRows, recentViewRows, progressRows, allStudents, allResources, allLikes, rankedStudentRows] = await Promise.all([
     getStudentById(userId),
     db.select({ resource: resources, author: studentUsers }).from(resources).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(eq(resources.authorId, userId)).orderBy(desc(resources.createdAt)),
     db.select({ resource: resources, author: studentUsers }).from(resourceSaves).innerJoin(resources, eq(resourceSaves.resourceId, resources.id)).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(eq(resourceSaves.userId, userId)).orderBy(desc(resourceSaves.createdAt)),
     db.select({ resource: resources, author: studentUsers }).from(resourceViews).innerJoin(resources, eq(resourceViews.resourceId, resources.id)).innerJoin(studentUsers, eq(resources.authorId, studentUsers.id)).where(and(eq(resourceViews.userId, userId), eq(resources.moderationStatus, "published"))).orderBy(desc(resourceViews.viewedAt)).limit(8),
+    db.select().from(resourceProgress).where(eq(resourceProgress.userId, userId)),
     db.select().from(studentUsers),
     db.select({ id: resources.id, authorId: resources.authorId }).from(resources),
     db.select({ resourceId: resourceLikes.resourceId }).from(resourceLikes),
@@ -209,7 +219,7 @@ export async function getDashboard(userId: number) {
     student: publicStudent(student),
     contributions: await decorateResources(ownRows, userId),
     saved: await decorateResources(savedRows, userId),
-    recentlyViewed: await decorateResources(recentViewRows, userId),
+    recentlyViewed: (await decorateResources(recentViewRows, userId)).map((resource) => ({ ...resource, progressPercent: progressRows.find((item) => item.resourceId === resource.id)?.progressPercent ?? 0, lastPage: progressRows.find((item) => item.resourceId === resource.id)?.lastPage ?? 1 })),
     stats: {
       uploadCount: ownRows.length,
       savedCount: savedRows.length,

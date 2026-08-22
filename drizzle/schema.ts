@@ -115,6 +115,46 @@ export const resourceViews = mysqlTable(
   ],
 );
 
+export const resourceProgress = mysqlTable(
+  "resourceProgress",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    resourceId: int("resourceId").notNull().references(() => resources.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => studentUsers.id, { onDelete: "cascade" }),
+    progressPercent: int("progressPercent").default(0).notNull(),
+    lastPage: int("lastPage").default(1).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [uniqueIndex("resource_progress_unique").on(table.resourceId, table.userId), index("resource_progress_user_date_idx").on(table.userId, table.updatedAt)],
+);
+
+export const resourceQuizzes = mysqlTable(
+  "resourceQuizzes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    resourceId: int("resourceId").notNull().references(() => resources.id, { onDelete: "cascade" }),
+    creatorId: int("creatorId").notNull().references(() => studentUsers.id, { onDelete: "cascade" }),
+    questionsJson: text("questionsJson").notNull(),
+    questionCount: int("questionCount").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [index("resource_quizzes_resource_idx").on(table.resourceId)],
+);
+
+export const quizAttempts = mysqlTable(
+  "quizAttempts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    quizId: int("quizId").notNull().references(() => resourceQuizzes.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => studentUsers.id, { onDelete: "cascade" }),
+    answersJson: text("answersJson").notNull(),
+    score: int("score").notNull(),
+    total: int("total").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [index("quiz_attempts_user_date_idx").on(table.userId, table.createdAt)],
+);
+
 export const contentReports = mysqlTable(
   "contentReports",
   {

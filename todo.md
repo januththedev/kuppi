@@ -38,3 +38,9 @@
 - [x] Add a recently viewed notes section to the student dashboard with resume links.
 - [x] Add pin and unpin controls for dashboard recent searches, keeping pinned queries at the top.
 - [x] Add automated coverage and responsive validation for recommendations, recent views, and pinned search history.
+- [x] Create a 30-second Kuppi promotional advertisement showcasing real student resources, discovery, and sharing.
+- [x] Add persistent document progress markers and resume cues for eligible recently viewed notes.
+- [x] Add resource-scoped MCQ quiz records, quiz attempts, and student quiz results.
+- [x] Integrate OpenRouter free-model MCQ generation using a self-hosted server environment key and strict quiz-generation prompt.
+- [x] Show an AI quiz entry point beside eligible PDF and image resources, with quiz-taking and review states.
+- [x] Test the progress and quiz workflows, summarize the completed product work, and synchronize the update to GitHub.
