@@ -39,9 +39,16 @@ const client = new S3Client({
 const bucket = process.env.S3_BUCKET || "kuppi-uploads";
 const publicBase = `${process.env.S3_ENDPOINT.replace(/\/+$/, "")}/${bucket}`;
 
-const pool = mysql.createPool(process.env.DATABASE_URL, { namedPlaceholders: true });
+// Match server/db.ts: mysql2 ignores ssl-mode URI params, so strip it and
+// enable TLS explicitly, matching the app's own connection behavior.
+const needsSsl = /ssl-mode=REQUIRED/.test(process.env.DATABASE_URL);
+const pool = mysql.createPool(
+  process.env.DATABASE_URL.replace(/\?ssl-mode=[^&]*$/, "").replace(/&(ssl-mode=[^&]*)$/, ""),
+  { ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}), namedPlaceholders: true },
+);
 const [rows] = await pool.query(
-  "SELECT id, storage_key, storage_url, mime_type, file_size FROM resources WHERE storage_url LIKE '%vercel-storage.com' ORDER BY id ASC",
+  // Column names are camelCase literals in drizzle/schema.ts.
+  "SELECT id, storageKey AS storage_key, storageUrl AS storage_url, mimeType AS mime_type, fileSize AS file_size FROM resources WHERE storageUrl LIKE '%vercel-storage.com' ORDER BY id ASC",
 );
 console.log(`${rows.length} Vercel Blob row(s) found${DRY_RUN ? " (dry run)" : ""}`);
 
@@ -73,7 +80,7 @@ async function migrateRow(row) {
         ContentType: row.mime_type || "application/octet-stream",
       }));
       const newUrl = `${publicBase}/${key.split("/").map(encodeURIComponent).join("/")}`;
-      await pool.query("UPDATE resources SET storage_url = ? WHERE id = ?", [newUrl, row.id]);
+      await pool.query("UPDATE resources SET storageUrl = ? WHERE id = ?", [newUrl, row.id]);
     }
     migrated += 1;
   } catch (error) {
