@@ -52,11 +52,12 @@ mkdir -p /opt/minio/data
 chown -R minio-user:minio-user /opt/minio
 
 # ---------------------------------------------------------------------------
-# 1. MinIO server (official deb ships a systemd unit reading /etc/default/minio)
+# 1. MinIO server — single static binary + our own systemd unit, identical on
+#    Debian/Ubuntu and RHEL-family/Oracle Linux
 # ---------------------------------------------------------------------------
 log "Installing MinIO server (${MC_ARCH})"
-wget -qO /tmp/minio.deb "https://dl.min.io/server/minio/release/${MC_ARCH}/minio.deb"
-DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/minio.deb >/dev/null
+wget -qO /usr/local/bin/minio "https://dl.min.io/server/minio/release/${MC_ARCH}/minio"
+chmod +x /usr/local/bin/minio
 chown minio-user:minio-user /opt/minio/data
 
 cat >/etc/default/minio <<EOF
@@ -70,6 +71,34 @@ MINIO_OPTS="--address 127.0.0.1:9000 --console-address 127.0.0.1:9001"
 MINIO_API_CORS_ALLOW_ORIGIN="*"
 EOF
 chmod 640 /etc/default/minio
+
+cat >/etc/systemd/system/minio.service <<'EOF'
+[Unit]
+Description=MinIO
+Documentation=https://min.io/docs/minio/linux/index.html
+Wants=network-online.target
+After=network-online.target
+AssertFileIsExecutable=/usr/local/bin/minio
+
+[Service]
+Type=notify
+WorkingDirectory=/usr/local
+User=minio-user
+Group=minio-user
+ProtectProc=invisible
+EnvironmentFile=-/etc/default/minio
+ExecStart=/usr/local/bin/minio server $MINIO_OPTS $MINIO_VOLUMES
+Restart=always
+LimitNOFILE=1048576
+MemoryAccounting=no
+TasksMax=infinity
+TimeoutSec=infinity
+OOMScoreAdjust=-1000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload >/dev/null 2>&1 || true
 
 systemctl enable --now minio >/dev/null 2>&1 || systemctl restart minio
 for i in $(seq 1 30); do
@@ -125,30 +154,53 @@ chmod 600 /root/kuppi-s3-credentials.env
 log "App credentials written to /root/kuppi-s3-credentials.env"
 
 # ---------------------------------------------------------------------------
-# 3. Instance firewall — Oracle's Ubuntu image ships an iptables ruleset that
-#    only allows SSH; open 80/443 for Caddy's ACME challenges and HTTPS.
-#    (The cloud-side Security List must ALSO allow 80/443 — see ops/README.md.)
+# 3. Instance firewall — Oracle's images ship restrictive rulesets; open 80/443
+#    whichever firewall is in charge. (The cloud-side Security List must ALSO
+#    allow 80/443 — see ops/README.md.)
 # ---------------------------------------------------------------------------
-for port in 80 443; do
-  # Insert at the top of INPUT: index-based positions break when the base
-  # ruleset is shorter than expected, and appending lands after the final
-  # REJECT rule Oracle ships.
-  iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT
-done
-if command -v netfilter-persistent >/dev/null 2>&1; then netfilter-persistent save >/dev/null; fi
-log "iptables allows 80/443"
+if command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld 2>/dev/null; then
+  firewall-cmd --permanent --add-service=http --add-service=https >/dev/null && firewall-cmd --reload >/dev/null \
+    || log "WARNING: could not configure firewalld"
+  log "firewalld allows 80/443"
+else
+  for port in 80 443; do
+    # Insert at the top of INPUT: index-based positions break when the base
+    # ruleset is shorter than expected, and appending lands after a final
+    # REJECT rule. Non-fatal where iptables does not exist at all.
+    iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null \
+      || { iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT 2>/dev/null || true; }
+  done
+  command -v netfilter-persistent >/dev/null 2>&1 && netfilter-persistent save >/dev/null || true
+  log "iptables allows 80/443"
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Caddy — automatic Let's Encrypt TLS in front of MinIO
 # ---------------------------------------------------------------------------
 if ! command -v caddy >/dev/null 2>&1; then
   log "Installing Caddy"
-  DEBIAN_FRONTEND=noninteractive apt-get update -qq
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https gnupg curl ca-certificates >/dev/null
-  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-  curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' >/etc/apt/sources.list.d/caddy-stable.list
-  DEBIAN_FRONTEND=noninteractive apt-get update -qq
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq caddy >/dev/null
+  if command -v apt-get >/dev/null 2>&1; then
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https gnupg curl ca-certificates >/dev/null
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' >/etc/apt/sources.list.d/caddy-stable.list
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq caddy >/dev/null
+  else
+    # RHEL family / Oracle Linux: Caddy lives in EPEL; Oracle ships its own
+    # EPEL companion package, other distros take epel-release.
+    PKG="$(command -v dnf || command -v yum)"
+    "$PKG" install -y "oracle-epel-release-el$(rpm -E %rhel 2>/dev/null || echo 9)" >/dev/null 2>&1 \
+      || "$PKG" install -y epel-release >/dev/null
+    "$PKG" install -y caddy >/dev/null
+  fi
+fi
+
+# SELinux (Oracle Linux defaults to enforcing) blocks Caddy connecting back to
+# the loopback MinIO without this boolean.
+if command -v getenforce >/dev/null 2>&1 && [ "$(getenforce)" = "Enforcing" ]; then
+  setsebool -P httpd_can_network_connect 1 || log "WARNING: could not set httpd_can_network_connect"
+  log "SELinux: httpd_can_network_connect enabled"
 fi
 
 cat >/etc/caddy/Caddyfile <<EOF
