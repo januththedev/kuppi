@@ -87,3 +87,89 @@ button { cursor: pointer; }
 .learning-tools { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 9px; margin-top: 14px; padding: 11px; border: 1px solid #e4ded7; border-radius: 10px; background: #fffdf9; }.learning-tools strong,.learning-tools span { display:block; }.learning-tools strong { color:#4c4451; font-size:11px; }.learning-tools span { margin-top:2px; color:#958c98; font-size:9px; }.learning-tools input { width:100%; }.learning-tools button { padding:7px 10px; border:0; border-radius:999px; background:#efeaff; color:#5937d6; font-size:10px; font-weight:800; }.learning-tools .ai-quiz-button { background:#5b35e8; color:#fff; }.quiz-preview { grid-column:1/-1; display:grid; gap:7px; padding-top:9px; border-top:1px solid #eee8e0; color:#514957; font-size:10px; }.quiz-preview>div { padding:8px; border-radius:7px; background:#f8f6fb; }.quiz-preview b,.quiz-preview label { display:block; }.quiz-preview label { margin-top:4px; color:#756d7a; }
 .resume-note { color:#5b37d7 !important; font-weight:800; }
 .quiz-source-note { color:#7f7684 !important; font-size:9px !important; }.quiz-result { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px; border-radius:7px; background:#eaf7ee; color:#367750; font-weight:800; }.quiz-result p { margin:0; }.quiz-result button { background:#fff !important; color:#37704d !important; }
+
+/* ============================================================
+   KUPPI DEPTH SYSTEM — 3D layers, tilt cards, motion hierarchy
+   ============================================================ */
+
+/* --- Hero WebGL layer --------------------------------------------------- */
+.hero-canvas-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hero-scene { position: absolute; inset: 0; }
+.hero-scene-canvas { display: block; width: 100% !important; height: 100% !important; }
+.hero-section-real > .container { position: relative; z-index: 2; }
+
+/* --- Tilt cards (vars driven by useTilt) -------------------------------- */
+.tilt-card {
+  --tilt-x: 0deg; --tilt-y: 0deg; --mx: 50%; --my: 50%;
+  position: relative;
+  transform: perspective(950px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform .22s cubic-bezier(.2,.65,.3,1), box-shadow .25s ease;
+  will-change: transform;
+}
+.tilt-card::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit;
+  background: radial-gradient(340px circle at var(--mx) var(--my), rgba(255,255,255,.30), rgba(123,92,233,.10) 42%, transparent 62%);
+  opacity: 0; transition: opacity .28s ease; pointer-events: none;
+}
+.tilt-card:hover::after, .tilt-card:focus-within::after { opacity: 1; }
+.real-resource-grid .resource-card.tilt-card:hover { box-shadow: 0 26px 48px -14px rgba(41,33,66,.22), 0 10px 24px rgba(41,33,66,.08); }
+
+/* --- Floating hero file stack ------------------------------------------- */
+@keyframes kuppi-float { 0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); } 50% { transform: rotate(var(--r, 0deg)) translateY(-11px); } }
+.hero-file-back { --r: -12deg; animation: kuppi-float 7.5s ease-in-out infinite; }
+.hero-file-mid { --r: 9deg; animation: kuppi-float 8.5s ease-in-out .7s infinite; }
+.hero-file-front { --r: -2deg; animation: kuppi-float 6.5s ease-in-out 1.2s infinite; }
+.real-file-stack { perspective: 1100px; transform-style: preserve-3d; }
+.hero-file-back { transform: rotate(var(--r)) translateZ(30px); }
+.hero-file-mid { transform: rotate(var(--r)) translateZ(60px); }
+.hero-file-front { transform: rotate(var(--r)) translateZ(95px); }
+@keyframes kuppi-float3d { 0%, 100% { transform: rotate(var(--r, 0deg)) translateZ(var(--z, 0px)) translateY(0); } 50% { transform: rotate(var(--r, 0deg)) translateZ(var(--z, 0px)) translateY(-12px); } }
+.hero-file-back { --z: 30px; animation-name: kuppi-float3d; }
+.hero-file-mid { --z: 60px; animation-name: kuppi-float3d; }
+.hero-file-front { --z: 95px; animation-name: kuppi-float3d; }
+
+/* --- Paper grain + aurora wash ------------------------------------------ */
+.grain-overlay::before {
+  content: ""; position: fixed; inset: -40%; z-index: 90; pointer-events: none; opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+}
+.hero-section-real { background: radial-gradient(circle at 74% 24%, rgba(214,201,255,.75), transparent 34%), radial-gradient(circle at 8% 88%, rgba(255,214,178,.5), transparent 26%), radial-gradient(circle at 45% 60%, rgba(158,132,240,.12), transparent 46%), #f8f5ef; }
+
+/* --- CTA panel: living gradient ------------------------------------------ */
+@keyframes cta-drift { 0%, 100% { background-position: 0% 40%; } 50% { background-position: 100% 60%; } }
+.cta-section { background: linear-gradient(118deg, #5b35e8, #4a2ad0 38%, #7b52f0 62%, #5b35e8); background-size: 220% 220%; animation: cta-drift 16s ease-in-out infinite; box-shadow: 0 32px 70px -18px rgba(64,35,168,.45); }
+.cta-section:before { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,.28); pointer-events: none; }
+
+/* --- Buttons & interactive polish ---------------------------------------- */
+.resource-actions button, .nav-link, .footer-links button { position: relative; }
+.btn-lift { transition: transform .18s ease, box-shadow .18s ease; }
+.btn-lift:hover { transform: translateY(-2px); box-shadow: 0 12px 26px -8px rgba(91,53,232,.5); }
+.btn-lift:active { transform: translateY(0); }
+header .container > div > .bg-\[\#5b35e8\], .hero-copy .bg-\[\#5b35e8\] { box-shadow: 0 10px 24px -8px rgba(91,53,232,.42); }
+
+/* --- Focus visibility (a11y) ---------------------------------------------- */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid #7b52f0; outline-offset: 2px; border-radius: 6px;
+}
+
+/* --- Scroll reveal helper (JS-free baseline before hydration) ------------- */
+.reveal-base { opacity: 0; transform: translateY(24px); }
+.no-js .reveal-base, html.reveal-ready .reveal-base { opacity: 1; transform: none; transition: opacity .55s ease, transform .55s cubic-bezier(.22,.65,.3,1); }
+
+/* --- Dashboard stat cards get the same depth ------------------------------ */
+.dashboard-stats article { transition: transform .2s ease, box-shadow .2s ease; }
+.dashboard-stats article:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -14px rgba(41,33,66,.16); }
+
+/* --- Reduced motion: everything above calms down -------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .tilt-card { transform: none !important; }
+  .tilt-card::after { display: none; }
+  .hero-file { animation: none !important; }
+  .cta-section { animation: none !important; }
+  .grain-overlay::before { display: none; }
+}
+
+/* Kinetic headline: 3D flip-in lines */
+.hero-copy h1 { perspective: 700px; }
+.headline-line { display: inline-block; transform-origin: 50% 100%; backface-visibility: hidden; }
