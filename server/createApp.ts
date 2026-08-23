@@ -29,6 +29,10 @@ export async function createApp(mode: AppMode): Promise<Express> {
   registerLocalStorageFiles(app);
   registerBlobUploadRoute(app);
   registerOAuthRoutes(app);
+  // Simple liveness probe for platform health checks.
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, mode });
+  });
   // tRPC API
   app.use(
     "/api/trpc",
