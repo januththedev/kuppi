@@ -11,7 +11,7 @@ case "$*" in
     # shellcheck disable=SC1091
     source /etc/default/minio
     set +a
-    nohup /usr/bin/minio server $MINIO_OPTS $MINIO_VOLUMES >/var/log/minio-stub.log 2>&1 &
+    nohup /usr/local/bin/minio server $MINIO_OPTS $MINIO_VOLUMES >/var/log/minio-stub.log 2>&1 &
     echo "(stub) launched minio pid $!"
     ;;
   *"caddy"*)
