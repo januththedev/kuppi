@@ -56,6 +56,8 @@ chown -R minio-user:minio-user /opt/minio
 #    Debian/Ubuntu and RHEL-family/Oracle Linux
 # ---------------------------------------------------------------------------
 log "Installing MinIO server (${MC_ARCH})"
+# Stop first — overwriting a running binary fails with "Text file busy".
+systemctl stop minio >/dev/null 2>&1 || true
 wget -qO /usr/local/bin/minio "https://dl.min.io/server/minio/release/${MC_ARCH}/minio"
 chmod +x /usr/local/bin/minio
 chown minio-user:minio-user /opt/minio/data
