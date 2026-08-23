@@ -58,8 +58,8 @@ export default function HeroScene() {
 
       // Thin slabs that read as note cards / book covers in 3D space.
       const shardGeometry = () => {
-        const w = 0.9 + Math.random() * 1.5;
-        const h = 1.15 + Math.random() * 1.7;
+        const w = 0.65 + Math.random() * 1.05;
+        const h = 0.85 + Math.random() * 1.25;
         return new THREE.BoxGeometry(w, h, 0.07);
       };
 
@@ -92,10 +92,12 @@ export default function HeroScene() {
           metalness: 0.06,
         });
         const mesh = new THREE.Mesh(geometry, material);
+        // Bias shards toward the right-hand art column and keep them behind
+        // the glass panels so the headline copy stays readable.
         mesh.position.set(
-          (Math.random() - 0.5) * 16,
-          (Math.random() - 0.5) * 9,
-          -3 + Math.random() * 7,
+          (Math.random() - 0.3) * 12.5,
+          (Math.random() - 0.5) * 8.5,
+          -7 + Math.random() * 4.5,
         );
         mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, (Math.random() - 0.5) * 0.7);
         world.add(mesh);

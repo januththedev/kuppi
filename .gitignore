@@ -118,3 +118,6 @@ storage-data/
 
 # Manus debug collector output
 .manus-logs/
+
+# GUI test evidence
+gui-test-screenshots/

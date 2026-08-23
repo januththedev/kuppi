@@ -3,6 +3,31 @@
 Notable changes to Kuppi. Newest first. Maintained so future developers (human or AI)
 can understand what changed, why, and how it was verified.
 
+## 2026-08-23 (later — glassmorphism pass + production click fix)
+
+### P0 fix: production build was unusable — pointer clicks did nothing
+**Found by GUI testing:** in the built site, mouse clicks focused buttons but never
+fired React handlers (keyboard Enter worked). Root cause: `vite-plugin-manus-runtime`
+injected a ~367 KB Manus-platform instrumentation script into every production page,
+which swallowed pointer events outside the Manus host.
+**Change:** removed `vitePluginManusRuntime` (and the Manus-only jsx-loc attribute
+plugin stays for now); the dev-only debug collector is now gated by Vite build mode;
+`pnpm build` pins `NODE_ENV=production` via cross-env so dev tooling can never leak
+into dist again.
+**Verified:** rebuilt HTML contains zero Manus scripts (`grep manus dist/public/index.html` = 0).
+**Affected:** `vite.config.ts`, `package.json`.
+
+### Hero: animations removed, quiet glassmorphism added
+**Change:** per owner feedback the hero's entrance/float animations were removed
+(headline renders instantly; file panels are static frosted-glass layers with
+translateZ depth). Restrained glassmorphism applied to hero file stack, eyebrow chip.
+Three.js backdrop kept but recomposed: shards biased to the right art column,
+pushed back and shrunk so headline copy stays readable; glass opacity/blur raised
+so panels read clearly over the scene.
+**Affected:** `client/src/pages/Home.tsx`, `client/src/components/HeroScene.tsx`,
+`client/src/index.css`.
+**Testing:** tsc clean; production build green; deployed locally on :3200.
+
 ## 2026-08-23
 
 ### 3D depth identity (visual overhaul)
