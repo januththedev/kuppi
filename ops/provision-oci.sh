@@ -76,7 +76,7 @@ until launch_instance >/tmp/kuppi-launch.json 2>/tmp/kuppi-launch.err; do
   sleep 90
 done
 
-INSTANCE_OCID="$(python -c 'import json;print(json.load(open("/tmp/kuppi-launch.json"))["data"]["id"])' 2>/dev/null \
+INSTANCE_OCID="$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync("/tmp/kuppi-launch.json","utf8")).data.id)}catch{}' 2>/dev/null \
   || grep -o '"id": "[^"]*"' /tmp/kuppi-launch.json | head -1 | cut -d'"' -f4)"
 
 # --- open 80/443 in the first security list of the subnet -------------------
@@ -86,19 +86,18 @@ HAS_HTTPS="$(oci network security-list get --security-list-id "$SL_ID" \
 if [ "${HAS_HTTPS:-0}" = "0" ]; then
   echo "Adding 80/443 ingress to security list $SL_ID"
   CURRENT="$(oci network security-list get --security-list-id "$SL_ID" --query 'data."ingress-security-rules"' --raw)"
-  ADDED="$(CURRENT="$CURRENT" python - <<'PY'
-import json, os
-rules = json.loads(os.environ["CURRENT"])
-for port in (80, 443):
-    rules.append({
-        "protocol": "6",
-        "source": "0.0.0.0/0",
-        "source-type": "CIDR_BLOCK",
-        "tcp-options": {"destination-port-range": {"min": port, "max": port}},
-    })
-print(json.dumps(rules))
-PY
-)"
+  ADDED="$(CURRENT="$CURRENT" node -e '
+const rules = JSON.parse(process.env.CURRENT);
+for (const port of [80, 443]) {
+  rules.push({
+    protocol: "6",
+    source: "0.0.0.0/0",
+    "source-type": "CIDR_BLOCK",
+    "tcp-options": { "destination-port-range": { min: port, max: port } },
+  });
+}
+console.log(JSON.stringify(rules));
+')"
   oci network security-list update --security-list-id "$SL_ID" --ingress-security-rules "$ADDED" --force
 else
   echo "Security list already allows 80/443"
