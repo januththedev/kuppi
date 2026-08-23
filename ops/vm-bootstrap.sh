@@ -130,7 +130,10 @@ log "App credentials written to /root/kuppi-s3-credentials.env"
 #    (The cloud-side Security List must ALSO allow 80/443 — see ops/README.md.)
 # ---------------------------------------------------------------------------
 for port in 80 443; do
-  iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null || iptables -I INPUT 5 -p tcp --dport "$port" -j ACCEPT
+  # Insert at the top of INPUT: index-based positions break when the base
+  # ruleset is shorter than expected, and appending lands after the final
+  # REJECT rule Oracle ships.
+  iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null || iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT
 done
 if command -v netfilter-persistent >/dev/null 2>&1; then netfilter-persistent save >/dev/null; fi
 log "iptables allows 80/443"
