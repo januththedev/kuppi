@@ -49,3 +49,5 @@
 - [x] Complete and verify the extracted-source PDF and image quiz-generation workflow.
 - [x] Add focused bonus study improvements to the reading and quiz experience.
 - [x] Test, save, and summarize the resumed Kuppi improvements.
+- [ ] Create a new 30-second Kuppi promotional video featuring real resources, document reading, and AI MCQ quizzes.
+- [x] Verify the GitHub repository link and provide a consolidated Kuppi implementation summary with OpenRouter AI quiz details.
