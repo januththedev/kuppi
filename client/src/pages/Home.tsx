@@ -149,21 +149,41 @@ export default function Home() {
     const file = upload.file;
     const meta = { title: upload.title, description: upload.description, subject: upload.subject, studyLevel: upload.studyLevel, stream: upload.stream || undefined, examRelevance: upload.examRelevance || undefined, originalFileName: file.name, mimeType: file.type || "application/octet-stream" };
 
-    // Vercel Blob deployments stream the file straight from the browser to
-    // blob storage (supports large files); other modes send base64 via API.
-    if (storageModeQuery.data?.mode === "blob") {
+    // Direct-upload deployments stream the file straight from the browser to
+    // object storage (supports large files); other modes send base64 via API.
+    if (storageModeQuery.data?.mode === "blob" || storageModeQuery.data?.mode === "s3") {
       setUploadBusy(true);
       setUploadPercent(0);
       try {
         const eligibility = await uploadUrlMutation.mutateAsync({ fileName: file.name, mimeType: meta.mimeType, fileSize: file.size });
-        const { upload: blobUpload } = await import("@vercel/blob/client");
-        const blob = await blobUpload(eligibility.pathname, file, {
-          access: "public",
-          handleUploadUrl: "/api/blob-upload",
-          contentType: meta.mimeType,
-          onUploadProgress: (p) => setUploadPercent(Math.round(p.percentage)),
-        });
-        createMetaMutation.mutate({ ...meta, storageUrl: blob.url, fileSize: file.size });
+        let fileUrl: string;
+        if (eligibility.driver === "s3") {
+          // Presigned PUT straight to MinIO.
+          fileUrl = await new Promise<string>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.upload.onprogress = (event) => {
+              if (event.lengthComputable) setUploadPercent(Math.round((event.loaded / event.total) * 100));
+            };
+            xhr.onload = () => {
+              if (xhr.status >= 200 && xhr.status < 300) resolve(eligibility.publicUrl);
+              else reject(new Error("Kuppi could not upload that file (" + xhr.status + ")."));
+            };
+            xhr.onerror = () => reject(new Error("Kuppi could not reach file storage."));
+            xhr.open("PUT", eligibility.uploadUrl);
+            xhr.setRequestHeader("Content-Type", eligibility.headers["Content-Type"]);
+            xhr.send(file);
+          });
+        } else {
+          const { upload: blobUpload } = await import("@vercel/blob/client");
+          const blob = await blobUpload(eligibility.pathname, file, {
+            access: "public",
+            handleUploadUrl: "/api/blob-upload",
+            contentType: meta.mimeType,
+            onUploadProgress: (p) => setUploadPercent(Math.round(p.percentage)),
+          });
+          fileUrl = blob.url;
+        }
+        createMetaMutation.mutate({ ...meta, storageUrl: fileUrl, fileSize: file.size });
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Kuppi could not upload that file.");
       } finally {
