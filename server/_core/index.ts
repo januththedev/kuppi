@@ -27,10 +27,14 @@ async function startServer() {
   const app = await createApp(development ? "development" : "production");
   const server = createServer(app);
 
-  // development mode attaches Vite middleware for the SPA
   if (development) {
+    // development mode attaches Vite middleware for the SPA
     const { setupVite } = await import("./vite");
     await setupVite(app, server);
+  } else {
+    // single-host production serves the built SPA from dist/public
+    const { serveStatic } = await import("./vite");
+    serveStatic(app);
   }
 
   const preferredPort = parseInt(process.env.PORT || "3000");

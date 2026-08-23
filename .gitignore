@@ -124,3 +124,7 @@ gui-test-screenshots/
 
 # Browser test run artifacts
 test-artifacts/
+
+# Vercel local build artifacts
+.vercel/
+.vercel-test/
