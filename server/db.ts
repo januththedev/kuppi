@@ -1,15 +1,34 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool } from "mysql2/promise";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
-let _db: ReturnType<typeof drizzle> | null = null;
+function runtimeDatabaseUrl() {
+  // mysql2 does not understand the ssl-mode URI param some managed providers
+  // (Aiven) include; strip it and configure TLS explicitly instead.
+  const url = process.env.DATABASE_URL ?? "";
+  return url.replace(/\?ssl-mode=[^&]*$/, "").replace(/&(ssl-mode=[^&]*)$/, "");
+}
+
+function createDb() {
+  const url = runtimeDatabaseUrl();
+  const needsSsl = /ssl-mode=REQUIRED/.test(process.env.DATABASE_URL ?? "");
+  const pool = createPool({
+    uri: url,
+    ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+    connectionLimit: 10,
+  });
+  return drizzle(pool);
+}
+
+let _db: ReturnType<typeof createDb> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = createDb();
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
