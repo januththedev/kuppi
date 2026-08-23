@@ -177,25 +177,47 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 4. Caddy — automatic Let's Encrypt TLS in front of MinIO
+# 4. Caddy — automatic Let's Encrypt TLS in front of MinIO.
+#    Static official binary + our own unit: identical on every distro, immune
+#    to EPEL/APT packaging drift (both broke in practice).
 # ---------------------------------------------------------------------------
-if ! command -v caddy >/dev/null 2>&1; then
-  log "Installing Caddy"
-  if command -v apt-get >/dev/null 2>&1; then
-    DEBIAN_FRONTEND=noninteractive apt-get update -qq
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https gnupg curl ca-certificates >/dev/null
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --batch --yes --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' >/etc/apt/sources.list.d/caddy-stable.list
-    DEBIAN_FRONTEND=noninteractive apt-get update -qq
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq caddy >/dev/null
-  else
-    # RHEL family / Oracle Linux: Caddy lives in EPEL; Oracle ships its own
-    # EPEL companion package, other distros take epel-release.
-    PKG="$(command -v dnf || command -v yum)"
-    "$PKG" install -y "oracle-epel-release-el$(rpm -E %rhel 2>/dev/null || echo 9)" >/dev/null 2>&1 \
-      || "$PKG" install -y epel-release >/dev/null
-    "$PKG" install -y caddy >/dev/null
+if ! command -v /usr/local/bin/caddy >/dev/null 2>&1; then
+  log "Installing Caddy (static binary)"
+  case "$ARCH" in
+    aarch64) CADDY_ARCH=linux-arm64 ;;
+    *) CADDY_ARCH=linux-amd64 ;;
+  esac
+  systemctl stop caddy >/dev/null 2>&1 || true
+  curl -fsSL "https://caddyserver.com/api/download?os=linux&arch=${CADDY_ARCH#linux-}" -o /usr/local/bin/caddy \
+    || wget -qO /usr/local/bin/caddy "https://caddyserver.com/api/download?os=linux&arch=${CADDY_ARCH#linux-}"
+  chmod +x /usr/local/bin/caddy
+
+  if ! id -u caddy >/dev/null 2>&1; then
+    useradd --system --home-dir /var/lib/caddy --create-home --shell /usr/sbin/nologin caddy
   fi
+  mkdir -p /etc/caddy /var/lib/caddy
+  chown -R caddy:caddy /var/lib/caddy
+
+  cat >/etc/systemd/system/caddy.service <<'EOF'
+[Unit]
+Description=Caddy web server for Kuppi MinIO
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+User=caddy
+Group=caddy
+ExecStart=/usr/local/bin/caddy run --config /etc/caddy/Caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile --force
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+PrivateTmp=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+EOF
 fi
 
 # SELinux (Oracle Linux defaults to enforcing) blocks Caddy connecting back to
