@@ -167,6 +167,25 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Split stable vendor libraries so app-code changes do not invalidate
+        // the whole cache; three.js stays in its own lazy chunk via import().
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "wouter"],
+          "trpc-client": ["@trpc/client", "@trpc/react-query", "@tanstack/react-query", "superjson"],
+          motion: ["framer-motion"],
+          ui: [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-select",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-tooltip",
+            "lucide-react",
+          ],
+        },
+      },
+    },
   },
   server: {
     host: true,

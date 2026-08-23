@@ -153,9 +153,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   outline: 3px solid #7b52f0; outline-offset: 2px; border-radius: 6px;
 }
 
-/* --- Scroll reveal helper (JS-free baseline before hydration) ------------- */
-.reveal-base { opacity: 0; transform: translateY(24px); }
-.no-js .reveal-base, html.reveal-ready .reveal-base { opacity: 1; transform: none; transition: opacity .55s ease, transform .55s cubic-bezier(.22,.65,.3,1); }
 
 /* --- Dashboard stat cards get the same depth ------------------------------ */
 .dashboard-stats article { transition: transform .2s ease, box-shadow .2s ease; }
@@ -173,3 +170,8 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* Kinetic headline: 3D flip-in lines */
 .hero-copy h1 { perspective: 700px; }
 .headline-line { display: inline-block; transform-origin: 50% 100%; backface-visibility: hidden; }
+
+/* --- Report modal --------------------------------------------------------- */
+.report-modal { width: min(100%, 470px); padding-top: 30px; }
+.report-actions-row { display: flex; justify-content: flex-end; gap: 9px; margin-top: 4px; }
+@media (max-width: 520px) { .report-actions-row { flex-direction: column-reverse; } .report-actions-row button { width: 100%; } }
