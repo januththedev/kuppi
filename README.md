@@ -55,6 +55,10 @@ pnpm test    # vitest suite
 pnpm db:push # drizzle-kit generate + migrate
 ```
 
+## Deploying to Vercel
+
+See [DEPLOY_VERCEL.md](./DEPLOY_VERCEL.md) — the repo ships with a serverless entry (api/index.ts), vercel.json routing, and Vercel Blob upload support.
+
 ## Self-hosting notes
 
 - Without Forge credentials, uploads are written to `storage-data/` (configurable via

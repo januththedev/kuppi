@@ -174,3 +174,29 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 /* --- Glass eyebrow pill (restrained glassmorphism) ------------------------- */
 .eyebrow { background: rgba(255,255,255,.58); border: 1px solid rgba(255,255,255,.72); backdrop-filter: blur(10px) saturate(1.3); -webkit-backdrop-filter: blur(10px) saturate(1.3); }
+
+/* --- Hero art: soft orbs + layered cards (brand mock, CSS-only) ---------- */
+.real-hero-orb { position: absolute; border-radius: 50%; }
+.real-hero-orb-one { top: -8%; right: 0; width: 330px; height: 330px; background: #dccfff; opacity: .95; }
+.real-hero-orb-two { bottom: 2%; left: 1%; width: 195px; height: 195px; background: #ffd9b8; }
+@media (min-width: 761px) {
+  .real-file-stack { inset: 26px 5% 0 7%; }
+  /* Pastel slabs like the mock: flat color, generous radius, soft depth */
+  .hero-file-back { transform: rotate(-9deg) translateZ(0); background: #dcd2fa; border: 0; border-radius: 24px; box-shadow: 0 30px 60px -18px rgba(64,42,140,.22); }
+  .hero-file-mid { transform: rotate(8deg) translateZ(0); background: #f3cf7e; border: 0; border-radius: 22px; box-shadow: 0 26px 50px -16px rgba(150,105,32,.26); }
+  .hero-file-front { transform: rotate(-2deg); width: 300px; left: 20%; background: rgba(255,253,249,.92); border: 1px solid #ffffff; border-radius: 18px; box-shadow: 0 36px 66px -20px rgba(45,29,90,.30), inset 0 1px 0 #ffffff; backdrop-filter: blur(10px) saturate(1.25); -webkit-backdrop-filter: blur(10px) saturate(1.25); }
+}
+
+/* --- Hero cards: gentle lift on hover ------------------------------------- */
+@media (hover: hover) and (min-width: 761px) {
+  .hero-file { transition: transform .35s cubic-bezier(.22,.65,.3,1), box-shadow .35s ease; }
+  .real-hero-orb { transition: transform .5s cubic-bezier(.22,.65,.3,1); }
+  .real-file-stack:hover .hero-file-back { transform: rotate(-10.5deg) translateY(-4px); }
+  .real-file-stack:hover .hero-file-mid { transform: rotate(9.5deg) translateY(-7px); }
+  .real-file-stack:hover .hero-file-front { transform: rotate(-1deg) translateY(-11px); box-shadow: 0 46px 78px -22px rgba(45,29,90,.36), inset 0 1px 0 #ffffff; }
+  .real-hero-art:hover .real-hero-orb-one { transform: translate(8px, -8px) scale(1.04); }
+  .real-hero-art:hover .real-hero-orb-two { transform: translate(-6px, 5px) scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-file, .real-hero-orb { transition: none !important; }
+}

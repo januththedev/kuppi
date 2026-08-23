@@ -1,12 +1,14 @@
 // Kuppi storage layer.
 //
-// Two interchangeable modes:
-//  - Manus Forge mode (default when BUILT_IN_FORGE_API_URL/KEY are set):
-//    uploads are presigned to S3 and downloads go through /manus-storage/{key}.
-//  - Self-hosted mode (no Forge credentials): files live on local disk under
-//    KUPPI_STORAGE_DIR (default ./storage-data) and are served by the app at
-//    /api/storage-files/{key}. This keeps uploads working without any
-//    platform-specific service.
+// Three interchangeable modes, chosen automatically from the environment:
+//  1. Manus Forge mode (BUILT_IN_FORGE_API_URL + BUILT_IN_FORGE_API_KEY set):
+//     uploads are presigned to S3 and downloads go through /manus-storage/{key}.
+//  2. Vercel Blob mode (BLOB_READ_WRITE_TOKEN set, no Forge credentials):
+//     uploads go to a Vercel Blob store and are served from its public CDN.
+//     This is the mode to use on Vercel, where serverless disks are ephemeral.
+//  3. Self-hosted mode (neither configured): files live on local disk under
+//     KUPPI_STORAGE_DIR (default ./storage-data) and are served by the app at
+//     /api/storage-files/{key}.
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -16,8 +18,16 @@ const LOCAL_STORAGE_ROOT = process.env.KUPPI_STORAGE_DIR
   ? path.resolve(process.env.KUPPI_STORAGE_DIR)
   : path.resolve(process.cwd(), "storage-data");
 
+function forgeConfigured(): boolean {
+  return Boolean(ENV.forgeApiUrl && ENV.forgeApiKey);
+}
+
+export function useVercelBlobStorage(): boolean {
+  return !forgeConfigured() && Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+}
+
 export function useLocalStorageSync(): boolean {
-  return !ENV.forgeApiUrl || !ENV.forgeApiKey;
+  return !forgeConfigured() && !useVercelBlobStorage();
 }
 
 function resolveLocalPath(relKey: string): string {
@@ -52,6 +62,25 @@ async function storagePutLocal(
   return { key, url: `/api/storage-files/${key}` };
 }
 
+async function storagePutBlob(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+  contentType: string,
+): Promise<{ key: string; url: string }> {
+  const { put } = await import("@vercel/blob");
+  const key = normalizeKey(relKey);
+  // Deterministic suffix-free URL so storageGetSignedUrl can reconstruct the
+  // public URL from the key alone; safeStorageName already embeds a UUID.
+  // PutBody accepts string | Buffer (not plain Uint8Array), so normalize.
+  const body = typeof data === "string" ? data : Buffer.from(data);
+  const blob = await put(key, body, {
+    access: "public",
+    addRandomSuffix: false,
+    contentType,
+  });
+  return { key, url: blob.url };
+}
+
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
@@ -59,6 +88,9 @@ export async function storagePut(
 ): Promise<{ key: string; url: string }> {
   if (useLocalStorageSync()) {
     return storagePutLocal(relKey, data);
+  }
+  if (useVercelBlobStorage()) {
+    return storagePutBlob(relKey, data, contentType);
   }
 
   const forgeUrl = ENV.forgeApiUrl.replace(/\/+$/, "");
@@ -102,24 +134,34 @@ export async function storagePut(
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-  return {
-    key,
-    url: useLocalStorageSync() ? `/api/storage-files/${key}` : `/manus-storage/${key}`,
-  };
+  if (useLocalStorageSync()) return { key, url: `/api/storage-files/${key}` };
+  if (useVercelBlobStorage()) return { key, url: await storageGetSignedUrl(key) };
+  return { key, url: `/manus-storage/${key}` };
 }
 
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
+  const key = normalizeKey(relKey);
   if (useLocalStorageSync()) {
     // Local mode reads straight from disk via storageReadBuffer; this URL is
     // only used as a browser-facing fallback.
-    return `/api/storage-files/${normalizeKey(relKey)}`;
+    return `/api/storage-files/${key}`;
+  }
+  if (useVercelBlobStorage()) {
+    // Blob objects live at a deterministic public URL for this key.
+    const { head } = await import("@vercel/blob");
+    try {
+      const meta = await head(key);
+      return meta.url;
+    } catch {
+      throw new Error("Kuppi could not find this uploaded resource in blob storage.");
+    }
   }
 
   const getUrl = new URL(
     "v1/storage/presign/get",
     ENV.forgeApiUrl.replace(/\/+$/, "") + "/",
   );
-  getUrl.searchParams.set("path", normalizeKey(relKey));
+  getUrl.searchParams.set("path", key);
 
   const resp = await fetch(getUrl, {
     headers: { Authorization: `Bearer ${ENV.forgeApiKey}` },

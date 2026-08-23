@@ -64,8 +64,8 @@ async function main() {
   const heroHeadline = await page.$eval("h1", (el) => el.textContent).catch(() => null);
   record("hero headline renders", Boolean(heroHeadline?.includes("Share the note")));
 
-  const canvasMounted = await page.$(".hero-scene-canvas");
-  record("Three.js hero canvas mounted", Boolean(canvasMounted));
+  const glassPanel = await page.$(".hero-file-front");
+  record("glass hero panels render", Boolean(glassPanel));
 
   await page.screenshot({ path: path.join(ARTIFACTS, "desktop-home.png") });
 
@@ -136,8 +136,8 @@ async function main() {
   const overflow = await mobile.page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   record("mobile: no horizontal overflow at 375px", overflow <= 1, `overflow=${overflow}px`);
 
-  const mobileCanvas = Boolean(await mobile.page.$(".hero-scene-canvas"));
-  record("mobile: hero canvas present", mobileCanvas);
+  const mobileGlass = Boolean(await mobile.page.$(".hero-file-front"));
+  record("mobile: glass hero panels render", mobileGlass);
 
   await mobile.page.screenshot({ path: path.join(ARTIFACTS, "mobile-home.png") });
 
