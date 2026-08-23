@@ -114,19 +114,19 @@ log "MinIO healthy on 127.0.0.1:9000"
 log "Installing mc and configuring bucket '${KUPPI_BUCKET}'"
 wget -qO /usr/local/bin/mc "https://dl.min.io/client/mc/release/${MC_ARCH}/mc"
 chmod +x /usr/local/bin/mc
-mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
-mc mb --ignore-existing "local/${KUPPI_BUCKET}" >/dev/null
+/usr/local/bin/mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
+/usr/local/bin/mc mb --ignore-existing "local/${KUPPI_BUCKET}" >/dev/null
 # Public read mirrors today's Vercel Blob access="public" semantics: stored
 # resource URLs are permanent and rendered directly by browsers.
-mc anonymous set download "local/${KUPPI_BUCKET}" >/dev/null
+/usr/local/bin/mc anonymous set download "local/${KUPPI_BUCKET}" >/dev/null
 
 # Recreate the app user on every run: MinIO never reveals stored secrets, so
 # deterministic rotation beats trying to recover the old one. If this script
 # re-runs, the deployment's S3_SECRET_ACCESS_KEY must be refreshed from
 # /root/kuppi-s3-credentials.env.
-mc admin user remove local kuppi-app >/dev/null 2>&1 || true
+/usr/local/bin/mc admin user remove local kuppi-app >/dev/null 2>&1 || true
 APP_SECRET="$(openssl rand -hex 24)"
-mc admin user add local kuppi-app "$APP_SECRET" >/dev/null
+/usr/local/bin/mc admin user add local kuppi-app "$APP_SECRET" >/dev/null
 cat >/tmp/kuppi-app-policy.json <<EOF
 {
   "Version": "2012-10-17",
@@ -136,9 +136,9 @@ cat >/tmp/kuppi-app-policy.json <<EOF
   ]
 }
 EOF
-mc admin policy create local kuppi-app-policy /tmp/kuppi-app-policy.json >/dev/null 2>&1 \
+/usr/local/bin/mc admin policy create local kuppi-app-policy /tmp/kuppi-app-policy.json >/dev/null 2>&1 \
   || mc admin policy add local kuppi-app-policy /tmp/kuppi-app-policy.json >/dev/null
-mc admin policy attach local kuppi-app-policy --user kuppi-app >/dev/null 2>&1 \
+/usr/local/bin/mc admin policy attach local kuppi-app-policy --user kuppi-app >/dev/null 2>&1 \
   || mc admin policy set local kuppi-app-policy user=kuppi-app >/dev/null
 rm -f /tmp/kuppi-app-policy.json
 
