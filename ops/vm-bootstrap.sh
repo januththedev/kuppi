@@ -44,8 +44,12 @@ if [ -z "${MINIO_DOMAIN:-}" ]; then
 fi
 log "MinIO will be served at https://${MINIO_DOMAIN}"
 
+# The official .deb does NOT create the service account — do it here.
+if ! id -u minio-user >/dev/null 2>&1; then
+  useradd --system --user-group --home-dir /opt/minio --shell /usr/sbin/nologin minio-user
+fi
 mkdir -p /opt/minio/data
-chown -R minio-user:minio-user /opt/minio 2>/dev/null || chown -R nobody:nogroup /opt/minio
+chown -R minio-user:minio-user /opt/minio
 
 # ---------------------------------------------------------------------------
 # 1. MinIO server (official deb ships a systemd unit reading /etc/default/minio)
@@ -53,7 +57,7 @@ chown -R minio-user:minio-user /opt/minio 2>/dev/null || chown -R nobody:nogroup
 log "Installing MinIO server (${MC_ARCH})"
 wget -qO /tmp/minio.deb "https://dl.min.io/server/minio/release/${MC_ARCH}/minio.deb"
 DEBIAN_FRONTEND=noninteractive dpkg -i /tmp/minio.deb >/dev/null
-mkdir -p /opt/minio/data && chown minio-user:minio-user /opt/minio/data
+chown minio-user:minio-user /opt/minio/data
 
 cat >/etc/default/minio <<EOF
 # Managed by Kuppi ops/vm-bootstrap.sh
