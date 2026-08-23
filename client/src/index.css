@@ -200,3 +200,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion: reduce) {
   .hero-file, .real-hero-orb { transition: none !important; }
 }
+
+/* --- Direct-upload progress bar ------------------------------------------- */
+.upload-progress { height: 6px; margin-bottom: 2px; border-radius: 99px; background: #eee9ff; overflow: hidden; }
+.upload-progress i { display: block; height: 100%; border-radius: 99px; background: #5b35e8; transition: width .25s ease; }

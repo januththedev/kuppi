@@ -6,8 +6,10 @@ already wired for Vercel:
 - `api/index.ts` — serverless entry that runs the same Express app as `pnpm start`
 - `vercel.json` — builds the SPA into `dist/public`, routes `/api/*` (and legacy
   `/manus-storage/*`) to the function, and falls back to `index.html` for SPA routes
-- `server/storage.ts` — automatically uses **Vercel Blob** for uploads when
-  `BLOB_READ_WRITE_TOKEN` is set (serverless disks are ephemeral, so this is required)
+- `server/storage.ts` + `server/blobUploadRoute.ts` — automatically uses **Vercel
+  Blob** for uploads when `BLOB_READ_WRITE_TOKEN` is set; files stream **directly
+  from the browser to Blob** (up to 30 MB) via an authenticated token route, since
+  serverless disks are ephemeral and request bodies are size-capped
 
 ## What you must provide
 
@@ -36,17 +38,18 @@ already wired for Vercel:
 
 ## Honest limits on Vercel
 
-- **Upload size:** serverless functions cap request bodies around **4.5 MB**, so file
-  uploads are effectively limited to ~3 MB after base64 encoding (the 25 MB limit
-  applies to self-hosted single-server deploys). Larger files need client-direct blob
-  uploads (`@vercel/blob/client`) — a natural next step if you need it.
+- **Upload size — solved for large files:** when `BLOB_READ_WRITE_TOKEN` is set
+  (Blob store connected), the upload form streams files **directly from the
+  browser to Vercel Blob** with a live progress bar, so the full **30 MB** limit
+  works on Vercel. The old base64-through-API path only remains as fallback for
+  self-hosted single-server deploys.
 - **Image OCR quizzes:** tesseract.js OCR may be slow or fail inside serverless
   functions; PDF-based quizzes are unaffected.
 - **Cold starts:** the first request after inactivity takes a few seconds.
 
 If you outgrow those constraints, the same repo runs unchanged as a always-on Node
-server (`pnpm build && pnpm start`) on Railway / Render / Fly.io / any VPS, where the
-full 25 MB upload limit and local-disk storage work as-is.
+server (`pnpm build && pnpm start`) on Railway / Render / Fly.io / any VPS, where
+local-disk storage mode also works as-is.
 
 ## Local production check before deploying
 

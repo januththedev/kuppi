@@ -33,8 +33,8 @@ import {
   setStudentSession,
   verifyPassword,
 } from "./kuppiAuth";
-import { storagePut } from "./storage";
-import { MAX_BASE64_LENGTH, safeStorageName, validateResourceUpload } from "./resourceSafety";
+import { storagePut, storageGetSignedUrl, useVercelBlobStorage, useLocalStorageSync } from "./storage";
+import { MAX_BASE64_LENGTH, MAX_UPLOAD_BYTES, safeStorageName, validateResourceUpload } from "./resourceSafety";
 import { createContentReport, listModerationReports, resolveModerationReport } from "./moderationDb";
 import { generateOpenRouterMcq, mcqSchema } from "./openRouterQuiz";
 import { createQuiz, getQuizById, recordQuizAttempt, upsertProgress } from "./quizDb";
@@ -66,6 +66,11 @@ const storageUrlInput = z
 
 export const appRouter = router({
   system: systemRouter,
+  storage: router({
+    // Public so the upload form can pick the right flow before the student
+    // signs in: "blob" = direct browser→Blob upload, otherwise base64 API.
+    mode: publicProcedure.query(() => ({ mode: useVercelBlobStorage() ? "blob" : useLocalStorageSync() ? "local" : "forge" })),
+  }),
   // Compatibility surface for the inherited client hook. Kuppi authentication is handled by account.* below.
   auth: router({
     me: publicProcedure.query(() => null),
@@ -147,10 +152,34 @@ export const appRouter = router({
       const student = await requireStudent(ctx.req);
       const buffer = Buffer.from(input.dataBase64, "base64");
       const uploadValidation = validateResourceUpload({ originalFileName: input.originalFileName, base64Length: input.dataBase64.length, byteLength: buffer.length });
-      if (uploadValidation) throw new TRPCError({ code: uploadValidation.includes("25 MB") ? "PAYLOAD_TOO_LARGE" : "BAD_REQUEST", message: uploadValidation });
+      if (uploadValidation) throw new TRPCError({ code: uploadValidation.includes("30 MB") ? "PAYLOAD_TOO_LARGE" : "BAD_REQUEST", message: uploadValidation });
       const contentType = input.mimeType || "application/octet-stream";
       const stored = await storagePut(`kuppi/${student.id}/resources/${safeStorageName(input.originalFileName)}`, buffer, contentType);
       const created = await createResource({ authorId: student.id, title: input.title, description: input.description, subject: input.subject, studyLevel: input.studyLevel, stream: input.stream || null, examRelevance: input.examRelevance || null, originalFileName: input.originalFileName, storageKey: stored.key, storageUrl: stored.url, mimeType: contentType, fileSize: buffer.length });
+      const resource = await getResourceById(created.resource.id, student.id);
+      return resource;
+    }),
+    uploadUrl: publicProcedure.input(z.object({ fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().min(1).max(160), fileSize: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      if (!useVercelBlobStorage()) throw new TRPCError({ code: "BAD_REQUEST", message: "Direct uploads are only available on Vercel Blob deployments." });
+      if (input.fileSize > MAX_UPLOAD_BYTES) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Files must be 30 MB or smaller." });
+      const pathname = `kuppi/${student.id}/resources/${safeStorageName(input.fileName)}`;
+      // The actual token is issued by the /api/blob-upload handleUpload route;
+      // this procedure exists so the client can confirm eligibility (auth,
+      // mode, size) before starting a direct upload.
+      return { pathname };
+    }),
+    createMeta: publicProcedure.input(z.object({ title: z.string().trim().min(3).max(180), description: z.string().trim().min(3).max(5000), subject: z.string().trim().min(2).max(80), studyLevel: z.string().trim().min(2).max(40), stream: z.string().trim().max(80).optional(), examRelevance: z.string().trim().max(100).optional(), originalFileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().max(160).optional(), storageUrl: storageUrlInput, fileSize: z.number().int().positive().lte(MAX_UPLOAD_BYTES) })).mutation(async ({ ctx, input }) => {
+      const student = await requireStudent(ctx.req);
+      if (!/^https?:\/\//i.test(input.storageUrl)) throw new TRPCError({ code: "BAD_REQUEST", message: "Direct-upload resources must reference an absolute file URL." });
+      let storageKey = input.storageUrl;
+      try {
+        storageKey = decodeURIComponent(new URL(input.storageUrl).pathname.slice(1));
+      } catch {
+        // keep full URL as key fallback
+      }
+      const contentType = input.mimeType || "application/octet-stream";
+      const created = await createResource({ authorId: student.id, title: input.title, description: input.description, subject: input.subject, studyLevel: input.studyLevel, stream: input.stream || null, examRelevance: input.examRelevance || null, originalFileName: input.originalFileName, storageKey, storageUrl: input.storageUrl, mimeType: contentType, fileSize: input.fileSize });
       const resource = await getResourceById(created.resource.id, student.id);
       return resource;
     }),

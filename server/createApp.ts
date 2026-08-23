@@ -14,6 +14,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./_core/oauth";
 import { registerStorageProxy } from "./_core/storageProxy";
 import { registerLocalStorageFiles } from "./localStorageFiles";
+import { registerBlobUploadRoute } from "./blobUploadRoute";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 
@@ -26,6 +27,7 @@ export async function createApp(mode: AppMode): Promise<Express> {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerLocalStorageFiles(app);
+  registerBlobUploadRoute(app);
   registerOAuthRoutes(app);
   // tRPC API
   app.use(

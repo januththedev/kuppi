@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+export const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
 export const MAX_BASE64_LENGTH = Math.ceil(MAX_UPLOAD_BYTES * 4 / 3) + 8;
 
 export function validateResourceUpload(input: { originalFileName: string; base64Length: number; byteLength: number }) {
