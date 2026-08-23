@@ -87,15 +87,13 @@ mc mb --ignore-existing "local/${KUPPI_BUCKET}" >/dev/null
 # resource URLs are permanent and rendered directly by browsers.
 mc anonymous set download "local/${KUPPI_BUCKET}" >/dev/null
 
+# Recreate the app user on every run: MinIO never reveals stored secrets, so
+# deterministic rotation beats trying to recover the old one. If this script
+# re-runs, the deployment's S3_SECRET_ACCESS_KEY must be refreshed from
+# /root/kuppi-s3-credentials.env.
+mc admin user remove local kuppi-app >/dev/null 2>&1 || true
 APP_SECRET="$(openssl rand -hex 24)"
-if ! mc admin user info local kuppi-app >/dev/null 2>&1; then
-  mc admin user add local kuppi-app "$APP_SECRET" >/dev/null
-  APP_SECRET_CREATED=1
-else
-  # User exists from an earlier run; rotate its secret only when asked.
-  APP_SECRET="$(mc admin user info local kuppi-app 2>/dev/null | grep -oP 'AccessKey: \K.*' || echo "")"
-  if [ -z "$APP_SECRET" ]; then APP_SECRET="(unchanged — see previous credentials file)"; fi
-fi
+mc admin user add local kuppi-app "$APP_SECRET" >/dev/null
 cat >/tmp/kuppi-app-policy.json <<EOF
 {
   "Version": "2012-10-17",
