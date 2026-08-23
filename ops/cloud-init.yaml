@@ -1,0 +1,22 @@
+#cloud-config
+# Kuppi MinIO VM user-data (Oracle Always-Free ARM).
+#
+# This file is a TEMPLATE: ops/provision-oci.sh replaces __KUPPI_BOOTSTRAP_B64__
+# with the base64 of ops/vm-bootstrap.sh before handing it to `oci compute
+# instance launch --user-data-file`. Base64 keeps the embedded script safe
+# from YAML quoting issues.
+#
+# Manual equivalent (Path B in ops/README.md): SSH in and run vm-bootstrap.sh
+# yourself — cloud-init is only a convenience for freshly launched instances.
+
+write_files:
+  - path: /root/kuppi-bootstrap.sh
+    permissions: "0700"
+    encoding: b64
+    content: __KUPPI_BOOTSTRAP_B64__
+
+runcmd:
+  - set -x
+  - MINIO_DOMAIN="${MINIO_DOMAIN:-}" bash /root/kuppi-bootstrap.sh > /var/log/kuppi-bootstrap.log 2>&1
+
+final_message: "Kuppi bootstrap finished after $UPTIME seconds — check /var/log/kuppi-bootstrap.log"

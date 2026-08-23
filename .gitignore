@@ -131,3 +131,6 @@ test-artifacts/
 
 # Pre-bundled serverless API
 dist-api/
+
+# Kuppi ops: pulled VM credentials
+.kuppi-s3-credentials.env
