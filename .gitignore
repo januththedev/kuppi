@@ -128,3 +128,6 @@ test-artifacts/
 # Vercel local build artifacts
 .vercel/
 .vercel-test/
+
+# Pre-bundled serverless API
+dist-api/
