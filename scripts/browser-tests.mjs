@@ -22,31 +22,33 @@ function record(name, passed, detail = "") {
 async function withPage(viewport) {
   const page = await browser.newPage();
   await page.setViewport(viewport);
-  const consoleErrors = [];
-  const pageErrors = [];
-  const failedRequests = [];
-  page.on("console", (message) => {
-    if (message.type() === "error") consoleErrors.push(message.text());
-  });
-  page.on("pageerror", (error) => pageErrors.push(String(error)));
-  page.on("requestfailed", (request) => {
-    const failure = request.failure()?.errorText ?? "";
-    // Ignore aborted requests (navigation cancellations are normal).
-    if (!failure.includes("ERR_ABORTED")) failedRequests.push(`${request.url()} ${failure}`);
-  });
+    const consoleErrors = [];
+    const pageErrors = [];
+    const failedRequests = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => pageErrors.push(String(error)));
+    page.on("response", (response) => {
+      if (response.status() < 400) return;
+      // A 401 from a protected procedure while signed out is the expected
+      // auth wall, not an error.
+      if (response.status() === 401 && response.url().includes("/api/trpc/dashboard.mine")) return;
+      failedRequests.push(`${response.status()} ${response.url()}`);
+    });
   return { page, consoleErrors, pageErrors, failedRequests };
 }
 
 async function main() {
   browser = await puppeteer.launch({
-    executablePath: "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     headless: true,
     dumpio: false,
     args: [
-      "--headless=new",
       "--no-sandbox",
       "--disable-dev-shm-usage",
-      "--user-data-dir=" + path.join(ARTIFACTS, "edge-profile"),
+      "--disable-gpu",
+      "--user-data-dir=" + path.join(ARTIFACTS, "edge-profile-" + Date.now()),
     ],
   });
 
@@ -118,7 +120,9 @@ async function main() {
   record("dashboard shows sign-in wall when logged out", Boolean(authWall?.includes("personal")));
   await page.screenshot({ path: path.join(ARTIFACTS, "desktop-dashboard-wall.png") });
 
-  const desktopClean = consoleErrors.filter((error) => !error.includes("favicon")) ?? [];
+  // The deliberate anonymous /dashboard visit logs Chrome's own 401 console
+  // line for dashboard.mine; that auth-wall rejection is expected.
+  const desktopClean = consoleErrors.filter((error) => !error.includes("favicon") && !error.includes("401 (Unauthorized)")) ?? [];
   record("no console/page errors on desktop flows", desktopClean.length === 0 && pageErrors.length === 0 && failedRequests.length === 0,
     [consoleErrors.join(" | "), pageErrors.join(" | "), failedRequests.join(" | ")].filter(Boolean).slice(0, 400));
   await page.close();

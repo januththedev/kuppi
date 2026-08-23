@@ -92,10 +92,6 @@ button { cursor: pointer; }
    KUPPI DEPTH SYSTEM — 3D layers, tilt cards, motion hierarchy
    ============================================================ */
 
-/* --- Hero WebGL layer --------------------------------------------------- */
-.hero-canvas-layer { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-.hero-scene { position: absolute; inset: 0; }
-.hero-scene-canvas { display: block; width: 100% !important; height: 100% !important; }
 .hero-section-real > .container { position: relative; z-index: 2; }
 
 /* --- Tilt cards (vars driven by useTilt) -------------------------------- */
@@ -115,8 +111,17 @@ button { cursor: pointer; }
 .tilt-card:hover::after, .tilt-card:focus-within::after { opacity: 1; }
 .real-resource-grid .resource-card.tilt-card:hover { box-shadow: 0 26px 48px -14px rgba(41,33,66,.22), 0 10px 24px rgba(41,33,66,.08); }
 
-/* --- Hero file stack: static 3D layers in quiet glassmorphism ------------- */
+/* --- Hero file stack: 3D layers in quiet glassmorphism ------------------- */
+/* The stack itself tilts with the pointer (useTilt sets --tilt-x/--tilt-y);
+   the three glass cards sit at different translateZ depths, so the tilt
+   produces real parallax between them. No other hero element moves. */
 .real-file-stack { perspective: 1100px; transform-style: preserve-3d; }
+.hero-tilt {
+  --tilt-x: 0deg; --tilt-y: 0deg;
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform .3s cubic-bezier(.2,.65,.3,1);
+  will-change: transform;
+}
 .hero-file { border: 1px solid rgba(255,255,255,.72); backdrop-filter: blur(20px) saturate(1.35); -webkit-backdrop-filter: blur(20px) saturate(1.35); }
 .hero-file-back { --r: -12deg; transform: rotate(var(--r)) translateZ(30px); background: rgba(226,218,253,.5); box-shadow: 0 18px 38px -12px rgba(52,33,92,.17); }
 .hero-file-mid { --r: 9deg; transform: rotate(var(--r)) translateZ(60px); background: rgba(236,206,138,.46); box-shadow: 0 20px 42px -12px rgba(52,33,92,.19); }
@@ -155,6 +160,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 @media (prefers-reduced-motion: reduce) {
   .tilt-card { transform: none !important; }
   .tilt-card::after { display: none; }
+  .hero-tilt { transform: none !important; }
 
   .cta-section { animation: none !important; }
   .grain-overlay::before { display: none; }

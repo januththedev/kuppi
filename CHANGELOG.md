@@ -5,6 +5,18 @@ can understand what changed, why, and how it was verified.
 
 ## 2026-08-23 (later — glassmorphism pass + production click fix)
 
+### Fix: storage-URL procedures always returned 400 (found by e2e tests)
+**Found by:** `scripts/browser-tests.mjs` (new headless-Chrome end-to-end suite).
+`relatedByUrl`, `markViewedByStorageUrl`, `updateProgressByUrl`, and
+`generateQuizByUrl` validated `storageUrl` with `z.string().url()`, but Kuppi's own
+storage references are root-relative paths (`/api/storage-files/...`) — so those
+procedures had never worked in any deployment; errors were silently swallowed by the UI.
+**Change:** shared `storageUrlInput` schema accepts root-relative or http(s) URLs.
+**Verified:** full 12/12 e2e suite green on the production deployment (:3200):
+home render, Three.js canvas mounted, auth modal + live username check, resource
+modal with preview/comments, dashboard auth wall, mobile 375px (no horizontal
+overflow), zero console/page errors.
+
 ### P0 fix: production build was unusable — pointer clicks did nothing
 **Found by GUI testing:** in the built site, mouse clicks focused buttons but never
 fired React handlers (keyboard Enter worked). Root cause: `vite-plugin-manus-runtime`

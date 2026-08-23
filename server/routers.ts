@@ -54,6 +54,16 @@ async function requireAdmin(request: Parameters<typeof getStudentFromRequest>[0]
 
 const idInput = z.object({ id: z.number().int().positive() });
 
+// Storage references are either root-relative app URLs (/api/storage-files/...,
+// /manus-storage/...) or absolute http(s) URLs — never trust arbitrary schemes.
+const storageUrlInput = z
+  .string()
+  .min(1)
+  .max(1024)
+  .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), {
+    message: "storageUrl must be a root-relative path or an http(s) URL",
+  });
+
 export const appRouter = router({
   system: systemRouter,
   // Compatibility surface for the inherited client hook. Kuppi authentication is handled by account.* below.
@@ -118,7 +128,7 @@ export const appRouter = router({
       const viewer = await getStudentFromRequest(ctx.req);
       return listRelatedResources(input.id, viewer?.id);
     }),
-    relatedByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024) })).query(async ({ ctx, input }) => {
+    relatedByUrl: publicProcedure.input(z.object({ storageUrl: storageUrlInput })).query(async ({ ctx, input }) => {
       const viewer = await getStudentFromRequest(ctx.req);
       return listRelatedResourcesByStorageUrl(input.storageUrl, viewer?.id);
     }),
@@ -128,7 +138,7 @@ export const appRouter = router({
       await markResourceViewed(input.id, student.id);
       return { success: true } as const;
     }),
-    markViewedByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024) })).mutation(async ({ ctx, input }) => {
+    markViewedByUrl: publicProcedure.input(z.object({ storageUrl: storageUrlInput })).mutation(async ({ ctx, input }) => {
       const student = await requireStudent(ctx.req);
       await markResourceViewedByStorageUrl(input.storageUrl, student.id);
       return { success: true } as const;
@@ -174,7 +184,7 @@ export const appRouter = router({
       await upsertProgress(input.resourceId, student.id, input.progressPercent, input.lastPage);
       return { success: true } as const;
     }),
-    updateProgressByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024), progressPercent: z.number().int().min(0).max(100), lastPage: z.number().int().min(1).max(100000) })).mutation(async ({ ctx, input }) => {
+    updateProgressByUrl: publicProcedure.input(z.object({ storageUrl: storageUrlInput, progressPercent: z.number().int().min(0).max(100), lastPage: z.number().int().min(1).max(100000) })).mutation(async ({ ctx, input }) => {
       const student = await requireStudent(ctx.req);
       const resource = await getResourceByStorageUrl(input.storageUrl, student.id);
       if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });
@@ -193,7 +203,7 @@ export const appRouter = router({
       // The answer key stays on the server; students receive questions only.
       return { id: quiz?.id, questions: result.questions.map(({ question, options }) => ({ question, options })), extractedChars: extractedText.length };
     }),
-    generateQuizByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024) })).mutation(async ({ ctx, input }) => {
+    generateQuizByUrl: publicProcedure.input(z.object({ storageUrl: storageUrlInput })).mutation(async ({ ctx, input }) => {
       const student = await requireStudent(ctx.req);
       const resource = await getResourceByStorageUrl(input.storageUrl, student.id);
       if (!resource) throw new TRPCError({ code: "NOT_FOUND", message: "That resource is no longer available." });

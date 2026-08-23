@@ -121,3 +121,6 @@ storage-data/
 
 # GUI test evidence
 gui-test-screenshots/
+
+# Browser test run artifacts
+test-artifacts/
