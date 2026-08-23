@@ -36,8 +36,8 @@ import {
 import { storagePut } from "./storage";
 import { MAX_BASE64_LENGTH, safeStorageName, validateResourceUpload } from "./resourceSafety";
 import { createContentReport, listModerationReports, resolveModerationReport } from "./moderationDb";
-import { generateOpenRouterMcq } from "./openRouterQuiz";
-import { createQuiz, recordQuizAttempt, upsertProgress } from "./quizDb";
+import { generateOpenRouterMcq, mcqSchema } from "./openRouterQuiz";
+import { createQuiz, getQuizById, recordQuizAttempt, upsertProgress } from "./quizDb";
 import { extractResourceText } from "./resourceTextExtraction";
 
 async function requireStudent(request: Parameters<typeof getStudentFromRequest>[0]) {
@@ -190,7 +190,8 @@ export const appRouter = router({
       if (extractedText.length < 120) throw new TRPCError({ code: "BAD_REQUEST", message: "Kuppi could not extract enough readable study text from this resource to make a reliable quiz." });
       const result = await generateOpenRouterMcq(`Resource title: ${resource.title}\nSubject: ${resource.subject}\nStudy level: ${resource.studyLevel}\nExtracted resource text: ${extractedText}\nCreate MCQs only from this supplied context.`);
       const quiz = await createQuiz(resource.id, student.id, JSON.stringify(result.questions), result.questions.length);
-      return { id: quiz?.id, questions: result.questions, extractedChars: extractedText.length };
+      // The answer key stays on the server; students receive questions only.
+      return { id: quiz?.id, questions: result.questions.map(({ question, options }) => ({ question, options })), extractedChars: extractedText.length };
     }),
     generateQuizByUrl: publicProcedure.input(z.object({ storageUrl: z.string().url().max(1024) })).mutation(async ({ ctx, input }) => {
       const student = await requireStudent(ctx.req);
@@ -201,14 +202,30 @@ export const appRouter = router({
       if (extractedText.length < 120) throw new TRPCError({ code: "BAD_REQUEST", message: "Kuppi could not extract enough readable study text from this resource to make a reliable quiz." });
       const result = await generateOpenRouterMcq(`Resource title: ${resource.title}\nSubject: ${resource.subject}\nStudy level: ${resource.studyLevel}\nExtracted resource text: ${extractedText}\nCreate MCQs only from this supplied context.`);
       const quiz = await createQuiz(resource.id, student.id, JSON.stringify(result.questions), result.questions.length);
-      return { id: quiz?.id, questions: result.questions, extractedChars: extractedText.length };
+      return { id: quiz?.id, questions: result.questions.map(({ question, options }) => ({ question, options })), extractedChars: extractedText.length };
     }),
-    submitQuiz: publicProcedure.input(z.object({ quizId: z.number().int().positive(), answers: z.array(z.number().int().min(0).max(3)).min(1), correctIndexes: z.array(z.number().int().min(0).max(3)).min(1) })).mutation(async ({ ctx, input }) => {
+    submitQuiz: publicProcedure.input(z.object({ quizId: z.number().int().positive(), answers: z.array(z.number().int().min(0).max(3)).min(1) })).mutation(async ({ ctx, input }) => {
       const student = await requireStudent(ctx.req);
-      const total = Math.min(input.answers.length, input.correctIndexes.length);
-      const score = input.answers.slice(0, total).filter((answer, index) => answer === input.correctIndexes[index]).length;
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND", message: "That quiz is no longer available." });
+      // Grading happens against the stored answer key; client-supplied
+      // correctness is never trusted.
+      const questions = mcqSchema.shape.questions.parse(JSON.parse(quiz.questionsJson));
+      const total = questions.length;
+      const score = questions.reduce(
+        (sum, question, index) => sum + (input.answers[index] === question.correctIndex ? 1 : 0),
+        0,
+      );
       await recordQuizAttempt(input.quizId, student.id, JSON.stringify(input.answers.slice(0, total)), score, total);
-      return { score, total };
+      return {
+        score,
+        total,
+        review: questions.map((question, index) => ({
+          correct: input.answers[index] === question.correctIndex,
+          correctIndex: question.correctIndex,
+          explanation: question.explanation,
+        })),
+      };
     }),
   }),
   moderation: router({

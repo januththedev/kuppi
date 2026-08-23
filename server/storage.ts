@@ -1,24 +1,33 @@
-// Preconfigured storage helpers for Manus WebDev templates
-// Uploads via Forge Server presigned URL to S3 (PUT direct).
-// Downloads return /manus-storage/{key} paths served via 307 redirect.
+// Kuppi storage layer.
+//
+// Two interchangeable modes:
+//  - Manus Forge mode (default when BUILT_IN_FORGE_API_URL/KEY are set):
+//    uploads are presigned to S3 and downloads go through /manus-storage/{key}.
+//  - Self-hosted mode (no Forge credentials): files live on local disk under
+//    KUPPI_STORAGE_DIR (default ./storage-data) and are served by the app at
+//    /api/storage-files/{key}. This keeps uploads working without any
+//    platform-specific service.
 
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { ENV } from "./_core/env";
 
-function getForgeConfig() {
-  const forgeUrl = ENV.forgeApiUrl;
-  const forgeKey = ENV.forgeApiKey;
+const LOCAL_STORAGE_ROOT = process.env.KUPPI_STORAGE_DIR
+  ? path.resolve(process.env.KUPPI_STORAGE_DIR)
+  : path.resolve(process.cwd(), "storage-data");
 
-  if (!forgeUrl || !forgeKey) {
-    throw new Error(
-      "Storage config missing: set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY",
-    );
-  }
-
-  return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
+export function useLocalStorageSync(): boolean {
+  return !ENV.forgeApiUrl || !ENV.forgeApiKey;
 }
 
-function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
+function resolveLocalPath(relKey: string): string {
+  const normalized = relKey.replace(/^\/+/, "");
+  const resolved = path.resolve(LOCAL_STORAGE_ROOT, normalized);
+  // Path traversal guard: never serve anything outside the storage root.
+  if (resolved !== LOCAL_STORAGE_ROOT && !resolved.startsWith(LOCAL_STORAGE_ROOT + path.sep)) {
+    throw new Error("Invalid storage key");
+  }
+  return resolved;
 }
 
 function appendHashSuffix(relKey: string): string {
@@ -28,12 +37,32 @@ function appendHashSuffix(relKey: string): string {
   return `${relKey.slice(0, lastDot)}_${hash}${relKey.slice(lastDot)}`;
 }
 
+function normalizeKey(relKey: string): string {
+  return relKey.replace(/^\/+/, "");
+}
+
+async function storagePutLocal(
+  relKey: string,
+  data: Buffer | Uint8Array | string,
+): Promise<{ key: string; url: string }> {
+  const key = normalizeKey(relKey);
+  const target = resolveLocalPath(key);
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, data);
+  return { key, url: `/api/storage-files/${key}` };
+}
+
 export async function storagePut(
   relKey: string,
   data: Buffer | Uint8Array | string,
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
+  if (useLocalStorageSync()) {
+    return storagePutLocal(relKey, data);
+  }
+
+  const forgeUrl = ENV.forgeApiUrl.replace(/\/+$/, "");
+  const forgeKey = ENV.forgeApiKey;
   const key = appendHashSuffix(normalizeKey(relKey));
 
   // 1. Get presigned PUT URL from Forge
@@ -56,7 +85,7 @@ export async function storagePut(
   const blob =
     typeof data === "string"
       ? new Blob([data], { type: contentType })
-      : new Blob([data as any], { type: contentType });
+      : new Blob([data as BlobPart], { type: contentType });
 
   const uploadResp = await fetch(s3Url, {
     method: "PUT",
@@ -73,18 +102,27 @@ export async function storagePut(
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-  return { key, url: `/manus-storage/${key}` };
+  return {
+    key,
+    url: useLocalStorageSync() ? `/api/storage-files/${key}` : `/manus-storage/${key}`,
+  };
 }
 
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
-  const { forgeUrl, forgeKey } = getForgeConfig();
-  const key = normalizeKey(relKey);
+  if (useLocalStorageSync()) {
+    // Local mode reads straight from disk via storageReadBuffer; this URL is
+    // only used as a browser-facing fallback.
+    return `/api/storage-files/${normalizeKey(relKey)}`;
+  }
 
-  const getUrl = new URL("v1/storage/presign/get", forgeUrl + "/");
-  getUrl.searchParams.set("path", key);
+  const getUrl = new URL(
+    "v1/storage/presign/get",
+    ENV.forgeApiUrl.replace(/\/+$/, "") + "/",
+  );
+  getUrl.searchParams.set("path", normalizeKey(relKey));
 
   const resp = await fetch(getUrl, {
-    headers: { Authorization: `Bearer ${forgeKey}` },
+    headers: { Authorization: `Bearer ${ENV.forgeApiKey}` },
   });
 
   if (!resp.ok) {
@@ -94,4 +132,9 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
 
   const { url } = (await resp.json()) as { url: string };
   return url;
+}
+
+/** Read an object's bytes directly. Used by text extraction in self-hosted mode. */
+export async function storageReadBuffer(relKey: string): Promise<Buffer> {
+  return readFile(resolveLocalPath(normalizeKey(relKey)));
 }

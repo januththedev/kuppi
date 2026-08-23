@@ -15,6 +15,12 @@ export async function createQuiz(resourceId: number, creatorId: number, question
   return quiz[0];
 }
 
+export async function getQuizById(quizId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database is unavailable");
+  const quiz = await db.select().from(resourceQuizzes).where(eq(resourceQuizzes.id, quizId)).limit(1);
+  return quiz[0] ?? null;
+}
+
 export async function recordQuizAttempt(quizId: number, userId: number, answersJson: string, score: number, total: number) {
   const db = await getDb(); if (!db) throw new Error("Database is unavailable");
   await db.insert(quizAttempts).values({ quizId, userId, answersJson, score, total });

@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { ENV } from "./env";
+import { useLocalStorageSync } from "../storage";
 
 export function registerStorageProxy(app: Express) {
   app.get("/manus-storage/*", async (req, res) => {
@@ -9,6 +10,12 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
+    // Self-hosted deployments keep legacy /manus-storage/{key} URLs working by
+    // redirecting them to the local file endpoint.
+    if (useLocalStorageSync()) {
+      res.redirect(307, `/api/storage-files/${key}`);
+      return;
+    }
     if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
       res.status(500).send("Storage proxy not configured");
       return;
