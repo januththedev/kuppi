@@ -204,3 +204,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* --- Direct-upload progress bar ------------------------------------------- */
 .upload-progress { height: 6px; margin-bottom: 2px; border-radius: 99px; background: #eee9ff; overflow: hidden; }
 .upload-progress i { display: block; height: 100%; border-radius: 99px; background: #5b35e8; transition: width .25s ease; }
+
+/* Paste-HTML publish source tabs + note */
+.publish-source-tabs { margin-bottom: 14px; }
+.html-paste-note { display: block; margin-top: 8px; color: #625d6d; font-size: 12px; line-height: 1.5; }

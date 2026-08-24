@@ -1,0 +1,12 @@
+# Kuppi — student-powered study library for Sri Lanka
+User-agent: *
+Allow: /
+
+# Crawl-delay for aggressive bots
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
+
+Sitemap: https://kuppi-nimnaljanuth-2392s-projects.vercel.app/sitemap.xml

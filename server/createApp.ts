@@ -18,6 +18,7 @@ import { registerOAuthRoutes } from "./_core/oauth";
 import { registerStorageProxy } from "./_core/storageProxy";
 import { registerLocalStorageFiles } from "./localStorageFiles";
 import { registerBlobUploadRoute } from "./blobUploadRoute";
+import { registerCliUploadRoutes } from "./cliUploadRoutes";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 
@@ -31,6 +32,7 @@ export async function createApp(_mode: AppMode): Promise<Express> {
   registerStorageProxy(app);
   registerLocalStorageFiles(app);
   registerBlobUploadRoute(app);
+  registerCliUploadRoutes(app);
   registerOAuthRoutes(app);
   // Simple liveness probe for platform health checks.
   app.get("/api/health", (_req, res) => {

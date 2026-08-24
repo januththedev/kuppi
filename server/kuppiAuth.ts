@@ -63,14 +63,17 @@ export async function verifyPassword(password: string, storedHash: string) {
   return expected.length === derived.length && timingSafeEqual(expected, derived);
 }
 
-export async function setStudentSession(response: Response, student: { id: number; username: string }) {
-  const token = await new SignJWT({ username: student.username })
+export async function createSessionToken(student: { id: number; username: string }) {
+  return new SignJWT({ username: student.username })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(String(student.id))
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
     .sign(signingKey());
+}
 
+export async function setStudentSession(response: Response, student: { id: number; username: string }) {
+  const token = await createSessionToken(student);
   response.cookie(KUPPI_SESSION_COOKIE, token, {
     httpOnly: true,
     secure: ENV.isProduction,
@@ -92,6 +95,26 @@ export function clearStudentSession(response: Response) {
 
 export async function getStudentFromRequest(request: Request) {
   const token = readCookie(request, KUPPI_SESSION_COOKIE);
+  if (!token) return null;
+  try {
+    const verified = await jwtVerify(token, signingKey());
+    const id = Number(verified.payload.sub);
+    if (!Number.isInteger(id) || id <= 0) return null;
+    return await getStudentById(id);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Same JWT session token, delivered via Authorization header instead of a
+ * cookie — this is how the terminal uploader (GET /api/cli/script) proves
+ * identity from PowerShell/CMD/bash where cookies are awkward.
+ */
+export async function getStudentFromBearer(request: Request) {
+  const header = request.headers.authorization ?? "";
+  if (!header.toLowerCase().startsWith("bearer ")) return null;
+  const token = header.slice(7).trim();
   if (!token) return null;
   try {
     const verified = await jwtVerify(token, signingKey());

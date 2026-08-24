@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { DashboardSort, filterAndSortDashboardResources, onlyOwnUploadedResources } from "@/lib/dashboardResourceDiscovery";
 import { addRecentSearch, orderSearchHistory, togglePinnedSearch } from "@/lib/dashboardSearchHistory";
 import { trpc } from "@/lib/trpc";
+import { usePageTitle } from "@/lib/pageTitle";
 import { Bookmark, Clock3, FileText, History, Loader2, Medal, Plus, Search, SlidersHorizontal, Star, Upload, UserRoundCheck, X } from "lucide-react";
 import { KeyboardEvent, useMemo, useState } from "react";
 import { useLocation } from "wouter";
@@ -19,6 +20,7 @@ function ResourceList({ items, kind }: { items: ResourceItem[]; kind: "contribut
 }
 
 export default function Dashboard() {
+  usePageTitle("My dashboard — Kuppi");
   const [, setLocation] = useLocation();
   const dashboardQuery = trpc.dashboard.mine.useQuery();
   const data = dashboardQuery.data as DashboardData | undefined;
