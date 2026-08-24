@@ -48,9 +48,9 @@ export default function ResourcePermalink({ id }: { id: number }) {
         <p style={{ color: "#938b98", fontSize: 12, fontWeight: 700, margin: "0 0 18px" }}>
           Shared by {resource.author.fullName} (@{resource.author.username}) · {resource.likeCount} likes · {resource.originalFileName}
         </p>
-        <DocumentPreview url={resource.storageUrl} mimeType={resource.mimeType} fileName={resource.originalFileName} />
+        <DocumentPreview url={resource.storageUrl} mimeType={resource.mimeType} fileName={resource.originalFileName} fileLink={`/f/${id}`} />
         <div className="modal-action-row" style={{ marginTop: 18 }}>
-          <a href={resource.storageUrl} target="_blank" rel="noreferrer" className="open-resource-button"><FileDown size={16} /> Open / download</a>
+          <a href={`/f/${id}`} target="_blank" rel="noreferrer" className="open-resource-button"><FileDown size={16} /> Open / download</a>
           <Button onClick={copyLink} variant="outline" className="rounded-full border-[#dad3cb] bg-white font-bold">
             {copied ? <Check size={15} /> : <Link2 size={15} />} {copied ? "Link copied" : "Copy link"}
           </Button>

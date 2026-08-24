@@ -81,9 +81,10 @@ try {
   const fileResource = metaRes.resource;
   ok("uploaded HTML published", Boolean(fileResource?.storageUrl), JSON.stringify(metaRes).slice(0, 150));
 
-  // /f/{id} short link redirects to the object URL.
+  // /f/{id} now STREAMS the file through Kuppi so the storage URL stays hidden.
   const fRes = await fetch(`${BASE}/f/${fileResource.id}`, { redirect: "manual" });
-  ok("/f/{id} 302s to the stored file", fRes.status === 302 && (fRes.headers.get("location") ?? "").startsWith(S3.S3_ENDPOINT), `${fRes.status} ${fRes.headers.get("location")}`);
+  const fBody = await fRes.text();
+  ok("/f/{id} streams the file through Kuppi", fRes.status === 200 && fBody.includes("uploaded-file-render-check"), `${fRes.status} ${fBody.slice(0, 80)}`);
   const fMissing = await fetch(`${BASE}/f/99999999`, { redirect: "manual" });
   ok("/f/{id} 404s for unknown ids", fMissing.status === 404);
 
