@@ -208,3 +208,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 /* Paste-HTML publish source tabs + note */
 .publish-source-tabs { margin-bottom: 14px; }
 .html-paste-note { display: block; margin-top: 8px; color: #625d6d; font-size: 12px; line-height: 1.5; }
+
+/* Permalink page /r/{id} */
+.permalink-page { min-height: 100vh; overflow-x: hidden; background: #f8f5ef; }
