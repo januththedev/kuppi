@@ -211,3 +211,5 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 
 /* Permalink page /r/{id} */
 .permalink-page { min-height: 100vh; overflow-x: hidden; background: #f8f5ef; }
+.developer-credit a { text-decoration: none; }
+.developer-credit a:hover strong { text-decoration: underline; text-underline-offset: 2px; }
