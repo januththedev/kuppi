@@ -4,16 +4,13 @@ import { trpc } from "@/lib/trpc";
 import { usePageTitle } from "@/lib/pageTitle";
 import { ArrowLeft, Check, FileDown, Link2, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useLocation, useParams } from "wouter";
+import { useLocation } from "wouter";
 
-/** Public, shareable landing page for a single uploaded file: /r/{id}. */
-export default function ResourcePermalink() {
-  const params = useParams<{ id: string }>();
-  const id = Number(params.id);
+/** Public, shareable landing page for a single uploaded file: /{id} or /r/{id}. */
+export default function ResourcePermalink({ id }: { id: number }) {
   const [, setLocation] = useLocation();
   const [copied, setCopied] = useState(false);
-  const validId = Number.isInteger(id) && id > 0;
-  const query = trpc.resource.byId.useQuery({ id }, { enabled: validId });
+  const query = trpc.resource.byId.useQuery({ id });
   const resource = query.data as
     | { id: number; title: string; description: string; subject: string; studyLevel: string; examRelevance?: string | null; originalFileName: string; mimeType: string; fileSize: number; storageUrl: string; likeCount: number; author: { fullName: string; username: string } }
     | undefined;

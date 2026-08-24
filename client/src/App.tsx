@@ -8,9 +8,19 @@ import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import ResourcePermalink from "./pages/ResourcePermalink";
+import { useParams } from "wouter";
+
+// Bare numeric paths (/123) are file permalinks; any other single segment is
+// a genuine 404. Validated here because wouter's inline regex params proved
+// unreliable across versions.
+function PermalinkOrNotFound() {
+  const id = Number(Object.values(useParams())[0]);
+  if (!Number.isInteger(id) || id <= 0) return <NotFound />;
+  return <ResourcePermalink id={id} />;
+}
 
 function Router() {
-  return <Switch><Route path="/" component={Home} /><Route path="/dashboard" component={Dashboard} /><Route path="/r/:id" component={ResourcePermalink} /><Route path="/:id([0-9]+)" component={ResourcePermalink} /><Route path="/admin/moderation" component={AdminModeration} /><Route path="/404" component={NotFound} /><Route component={NotFound} /></Switch>;
+  return <Switch><Route path="/" component={Home} /><Route path="/dashboard" component={Dashboard} /><Route path="/r/:id" component={ResourcePermalink} /><Route path="/admin/moderation" component={AdminModeration} /><Route path="/:fileId" component={PermalinkOrNotFound} /><Route component={NotFound} /></Switch>;
 }
 
 function App() {
