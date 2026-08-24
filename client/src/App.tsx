@@ -19,8 +19,14 @@ function PermalinkOrNotFound() {
   return <ResourcePermalink id={id} />;
 }
 
+function PermalinkFromRoute() {
+  const id = Number(useParams<{ id?: string }>().id);
+  if (!Number.isInteger(id) || id <= 0) return <NotFound />;
+  return <ResourcePermalink id={id} />;
+}
+
 function Router() {
-  return <Switch><Route path="/" component={Home} /><Route path="/dashboard" component={Dashboard} /><Route path="/r/:id" component={ResourcePermalink} /><Route path="/admin/moderation" component={AdminModeration} /><Route path="/:fileId" component={PermalinkOrNotFound} /><Route component={NotFound} /></Switch>;
+  return <Switch><Route path="/" component={Home} /><Route path="/dashboard" component={Dashboard} /><Route path="/r/:id" component={PermalinkFromRoute} /><Route path="/admin/moderation" component={AdminModeration} /><Route path="/:fileId" component={PermalinkOrNotFound} /><Route component={NotFound} /></Switch>;
 }
 
 function App() {
