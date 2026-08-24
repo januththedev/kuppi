@@ -5,6 +5,7 @@
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index" },
     { "source": "/manus-storage/:path*", "destination": "/api/index" },
-    { "source": "/((?!api/|manus-storage/|assets/).*)", "destination": "/index.html" }
+    { "source": "/f/:id", "destination": "/api/index" },
+    { "source": "/((?!api/|manus-storage/|assets/|f/).*)", "destination": "/index.html" }
   ]
 }
