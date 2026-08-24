@@ -134,3 +134,6 @@ dist-api/
 
 # Kuppi ops: pulled VM credentials
 .kuppi-s3-credentials.env
+
+# Kuppi ops: local DB url cache
+.kuppi-db-url.tmp
