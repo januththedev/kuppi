@@ -55,8 +55,12 @@ if [ ! -f /etc/pki/tls/certs/kuppi-mysql.crt ]; then
   openssl req -x509 -newkey rsa:2048 -keyout /etc/pki/tls/private/kuppi-mysql.key \
     -out /etc/pki/tls/certs/kuppi-mysql.crt -days 3650 -nodes \
     -subj "/CN=${DOMAIN_HINT}" >/dev/null 2>&1
-  chmod 600 /etc/pki/tls/private/kuppi-mysql.key
 fi
+# mariadbd drops to the "mysql" user BEFORE reading its key — a root-owned
+# mode-600 key makes the service refuse to start.
+chown mysql:mysql /etc/pki/tls/private/kuppi-mysql.key /etc/pki/tls/certs/kuppi-mysql.crt 2>/dev/null || true
+chmod 600 /etc/pki/tls/private/kuppi-mysql.key
+chmod 644 /etc/pki/tls/certs/kuppi-mysql.crt
 
 systemctl enable --now mariadb >/dev/null 2>&1 || systemctl restart mariadb
 for i in $(seq 1 30); do
