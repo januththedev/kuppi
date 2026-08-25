@@ -3,13 +3,58 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "dist/public",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/index" },
-    { "source": "/manus-storage/:path*", "destination": "/api/index" },
-    { "source": "/f/:id", "destination": "/api/index" },
-    { "source": "/sitemap.xml", "destination": "/api/index" },
-    { "source": "/", "destination": "/api/index", "has": [{ "type": "header", "key": "user-agent", "value": "[Gg]ooglebot|[Bb]ingbot|[Yy]andex|[Bb]aiduspider|[Dd]uck[Dd]uck[Bb]ot|[Tt]witterbot|[Ff]acebookexternalhit|[Ll]inkedin[Bb]ot|[Ww]hatsapp|[Ss]lackbot|[Dd]iscordbot|[Pp]interest" }] },
-    { "source": "/r/:id", "destination": "/api/index", "has": [{ "type": "header", "key": "user-agent", "value": "[Gg]ooglebot|[Bb]ingbot|[Yy]andex|[Bb]aiduspider|[Dd]uck[Dd]uck[Bb]ot|[Tt]witterbot|[Ff]acebookexternalhit|[Ll]inkedin[Bb]ot|[Ww]hatsapp|[Ss]lackbot|[Dd]iscordbot|[Pp]interest" }] },
-    { "source": "/:id([0-9]+)", "destination": "/api/index", "has": [{ "type": "header", "key": "user-agent", "value": "[Gg]ooglebot|[Bb]ingbot|[Yy]andex|[Bb]aiduspider|[Dd]uck[Dd]uck[Bb]ot|[Tt]witterbot|[Ff]acebookexternalhit|[Ll]inkedin[Bb]ot|[Ww]hatsapp|[Ss]lackbot|[Dd]iscordbot|[Pp]interest" }] },
-    { "source": "/((?!api/|manus-storage/|assets/|f/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/manus-storage/:path*",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/f/:id",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/index"
+    },
+    {
+      "source": "/",
+      "destination": "/api/index",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([Gg]ooglebot|[Bb]ingbot|[Yy]andex|[Bb]aiduspider|[Dd]uck[Dd]uck[Bb]ot|[Tt]witterbot|facebookexternalhit|[Ll]inkedin[Bb]ot|[Ww]hatsapp|[Ss]lackbot|[Dd]iscordbot|[Pp]interest).*"
+        }
+      ]
+    },
+    {
+      "source": "/r/:id",
+      "destination": "/api/index",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([Gg]ooglebot|[Bb]ingbot|[Yy]andex|[Bb]aiduspider|[Dd]uck[Dd]uck[Bb]ot|[Tt]witterbot|facebookexternalhit|[Ll]inkedin[Bb]ot|[Ww]hatsapp|[Ss]lackbot|[Dd]iscordbot|[Pp]interest).*"
+        }
+      ]
+    },
+    {
+      "source": "/:id([0-9]+)",
+      "destination": "/api/index",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([Gg]ooglebot|[Bb]ingbot|[Yy]andex|[Bb]aiduspider|[Dd]uck[Dd]uck[Bb]ot|[Tt]witterbot|facebookexternalhit|[Ll]inkedin[Bb]ot|[Ww]hatsapp|[Ss]lackbot|[Dd]iscordbot|[Pp]interest).*"
+        }
+      ]
+    },
+    {
+      "source": "/((?!api/|manus-storage/|assets/|f/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
