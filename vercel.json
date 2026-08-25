@@ -31,6 +31,17 @@
       ]
     },
     {
+      "source": "/about",
+      "destination": "/api/index",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*([Gg]ooglebot|[Bb]ingbot|[Yy]andex|[Bb]aiduspider|[Dd]uck[Dd]uck[Bb]ot|[Tt]witterbot|facebookexternalhit|[Ll]inkedin[Bb]ot|[Ww]hatsapp|[Ss]lackbot|[Dd]iscordbot|[Pp]interest).*"
+        }
+      ]
+    },
+    {
       "source": "/r/:id",
       "destination": "/api/index",
       "has": [

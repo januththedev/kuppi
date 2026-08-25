@@ -114,6 +114,7 @@ export function registerSeoRoutes(app: Express) {
       const resources = await listResources({}, undefined) as Array<{ id: number; updatedAt?: Date; createdAt: Date }>;
       const urls = [
         `  <url><loc>${SITE}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+        `  <url><loc>${SITE}/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`,
         ...resources.map((r) => `  <url><loc>${SITE}/r/${r.id}</loc><lastmod>${new Date(r.updatedAt ?? r.createdAt).toISOString().slice(0, 10)}</lastmod><priority>0.8</priority></url>`),
       ];
       res.status(200).setHeader("Content-Type", "application/xml; charset=utf-8").send(
@@ -131,8 +132,19 @@ export function registerSeoRoutes(app: Express) {
     const ua = String(req.headers["user-agent"] ?? "");
     if (!BOT_UA.test(ua)) return next();
     try {
-      if (req.path === "/") {
+      if (req.path === "/" || req.path === "/about") {
         const resources = await listResources({}, undefined) as Array<{ id: number; title: string; description: string; subject: string; studyLevel: string }>;
+        if (req.path === "/about") {
+          return res.status(200).setHeader("Content-Type", "text/html; charset=utf-8").send(page({
+            title: "About Kuppi — the Sri Lankan study tradition, online",
+            description: "Kuppi means a small study circle where Sri Lankan students teach each other. Kuppi the platform is a free library of A/L and O/L notes, past papers and revision guides shared by real students.",
+            canonical: `${SITE}/about`,
+            body: `<main><h1>What is a kuppi — and why we built a library around it</h1>
+<p>In Sri Lanka, a <strong>kuppi</strong> is the small study circle students form when exam pressure hits — everyone teaching everyone else what they finally understood. The word means a little lamp: something small that holds light and passes it on.</p>
+<p><strong>Kuppi the platform</strong> is a free library where Sri Lankan students share the study material that actually helped them — notes, past papers, revision guides, worksheets and quizzes for Combined Maths, Physics, Chemistry, Biology, Economics and more, for A/L and O/L. Every file was uploaded by a real student. Preview in your browser, download free, and pass your own understanding forward.</p>
+<p>Kuppi was created by <a href="https://www.januth.dev">Januth Nimnal</a>.</p></main>`,
+          }));
+        }
         return renderHome(res, resources);
       }
       const match = req.path.match(/^\/(?:r\/)?(\d+)\/?$/);

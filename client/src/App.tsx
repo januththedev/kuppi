@@ -4,6 +4,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AdminModeration from "./pages/AdminModeration";
+import About from "./pages/About";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
@@ -26,7 +27,7 @@ function PermalinkFromRoute() {
 }
 
 function Router() {
-  return <Switch><Route path="/" component={Home} /><Route path="/dashboard" component={Dashboard} /><Route path="/r/:id" component={PermalinkFromRoute} /><Route path="/admin/moderation" component={AdminModeration} /><Route path="/:fileId" component={PermalinkOrNotFound} /><Route component={NotFound} /></Switch>;
+  return <Switch><Route path="/" component={Home} /><Route path="/dashboard" component={Dashboard} /><Route path="/about" component={About} /><Route path="/r/:id" component={PermalinkFromRoute} /><Route path="/admin/moderation" component={AdminModeration} /><Route path="/:fileId" component={PermalinkOrNotFound} /><Route component={NotFound} /></Switch>;
 }
 
 function App() {
