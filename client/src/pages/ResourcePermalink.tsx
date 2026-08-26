@@ -12,7 +12,7 @@ export default function ResourcePermalink({ id }: { id: number }) {
   const [copied, setCopied] = useState(false);
   const query = trpc.resource.byId.useQuery({ id });
   const resource = query.data as
-    | { id: number; title: string; description: string; subject: string; studyLevel: string; examRelevance?: string | null; originalFileName: string; mimeType: string; fileSize: number; storageUrl: string; likeCount: number; author: { fullName: string; username: string } }
+    | { id: number; title: string; description: string; subject: string; studyLevel: string; examRelevance?: string | null; originalFileName: string; mimeType: string; fileSize: number; storageUrl: string; likeCount: number; tags?: string[]; author: { fullName: string; username: string } }
     | undefined;
   usePageTitle(resource ? `${resource.title} — Kuppi` : "Kuppi");
 
@@ -48,6 +48,7 @@ export default function ResourcePermalink({ id }: { id: number }) {
         <p style={{ color: "#938b98", fontSize: 12, fontWeight: 700, margin: "0 0 18px" }}>
           Shared by {resource.author.fullName} (@{resource.author.username}) · {resource.likeCount} likes · {resource.originalFileName}
         </p>
+        {resource.tags?.length ? <div className="tag-chip-row" style={{ margin: "-8px 0 18px" }}>{resource.tags.map((tag) => <a key={tag} className="tag-chip" href={`/?tag=${encodeURIComponent(tag)}`}>#{tag}</a>)}</div> : null}
         <DocumentPreview url={resource.storageUrl} mimeType={resource.mimeType} fileName={resource.originalFileName} fileLink={`/f/${id}`} />
         <div className="modal-action-row" style={{ marginTop: 18 }}>
           <a href={`/f/${id}`} target="_blank" rel="noreferrer" className="open-resource-button"><FileDown size={16} /> Open / download</a>

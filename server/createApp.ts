@@ -21,6 +21,8 @@ import { registerBlobUploadRoute } from "./blobUploadRoute";
 import { registerCliUploadRoutes } from "./cliUploadRoutes";
 import { registerFileLinkRoute } from "./fileLinkRoute";
 import { registerSeoRoutes } from "./seoRoutes";
+import { registerApiV1Routes } from "./apiV1Routes";
+import { registerMcpRoutes } from "./mcpServer";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 
@@ -35,6 +37,8 @@ export async function createApp(_mode: AppMode): Promise<Express> {
   registerLocalStorageFiles(app);
   registerBlobUploadRoute(app);
   registerCliUploadRoutes(app);
+  registerApiV1Routes(app);
+  registerMcpRoutes(app);
   registerFileLinkRoute(app);
   registerSeoRoutes(app);
   registerOAuthRoutes(app);

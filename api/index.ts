@@ -4,5 +4,7 @@
 // nothing to mis-compile.
 export { default } from "../dist-api/index.mjs";
 
-// Allow slow first connections (managed-MySQL TLS handshake, cold starts).
-export const config = { maxDuration: 30 };
+// 60s headroom: the first AI read of a note may OCR/parse the file and
+// generate hashtags inline (server/autoTagger.ts); results are cached in
+// MariaDB so later requests are instant.
+export const config = { maxDuration: 60 };

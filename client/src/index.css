@@ -213,3 +213,4 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .permalink-page { min-height: 100vh; overflow-x: hidden; background: #f8f5ef; }
 .developer-credit a { text-decoration: none; }
 .developer-credit a:hover strong { text-decoration: underline; text-underline-offset: 2px; }
+.tag-chip-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }.tag-chip { display: inline-flex; align-items: center; padding: 3px 8px; border: 1px solid #e4dcfb; border-radius: 99px; background: #f4f1ff; color: #5734d7; font-size: 9px; font-weight: 800; letter-spacing: .02em; transition: all .16s ease; }.tag-chip:hover { border-color: #b9a6f2; background: #ece6ff; }.tag-chip-active { border-color: #5b35e8; background: #5b35e8; color: white; }.permalink-page .tag-chip { font-size: 11px; padding: 5px 10px; }.tag-filter-note { margin-left: 2px; color: #5734d7; font-size: 10px; font-weight: 800; }

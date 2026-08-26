@@ -69,3 +69,13 @@ See [DEPLOY_VERCEL.md](./DEPLOY_VERCEL.md) — the repo ships with a serverless 
 - [SCALABILITY.md](./SCALABILITY.md) describes the path toward high-concurrency readiness.
 - See [AUDIT.md](./AUDIT.md) for the latest code audit and [CHANGELOG.md](./CHANGELOG.md)
   for notable changes.
+
+## Docs MCP (AI clients)
+
+Kuppi runs a remote MCP server at `/api/mcp`. Any AI (Claude Desktop, Codex,
+Cursor, …) can browse auto-generated hashtags, search the library, read
+extracted note text in-chat, share permalinks — and publish notes with a
+login. Reads are public; uploads are login-gated like every other upload path.
+
+See [docs/mcp.md](./docs/mcp.md) for client config, the tool list, and plain
+REST mirrors under `/api/v1/*`.
