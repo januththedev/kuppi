@@ -1,6 +1,7 @@
 import {
   index,
   int,
+  mediumtext,
   mysqlEnum,
   mysqlTable,
   text,
@@ -56,6 +57,10 @@ export const resources = mysqlTable(
     mimeType: varchar("mimeType", { length: 160 }).notNull(),
     fileSize: int("fileSize").notNull(),
     moderationStatus: mysqlEnum("moderationStatus", ["published", "hidden", "removed"]).default("published").notNull(),
+    // Lazily-filled plain-text cache: populated on first AI read or tag
+    // generation so PDFs/images never get re-parsed. Keyed implicitly by row.
+    extractedText: mediumtext("extractedText"),
+    extractedAt: timestamp("extractedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -63,6 +68,25 @@ export const resources = mysqlTable(
     index("resources_author_idx").on(table.authorId),
     index("resources_subject_idx").on(table.subject),
     index("resources_level_idx").on(table.studyLevel),
+  ],
+);
+
+/**
+ * Auto-generated hashtags (Kuppi generates them from content; users never
+ * type these). Lowercase slugs, ≤8 per resource — see server/autoTagger.ts.
+ */
+export const resourceTags = mysqlTable(
+  "resourceTags",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    resourceId: int("resourceId").notNull().references(() => resources.id, { onDelete: "cascade" }),
+    tag: varchar("tag", { length: 64 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("resource_tag_unique").on(table.resourceId, table.tag),
+    index("resource_tags_tag_idx").on(table.tag),
+    index("resource_tags_resource_idx").on(table.resourceId),
   ],
 );
 
@@ -180,3 +204,4 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type StudentUser = typeof studentUsers.$inferSelect;
 export type Resource = typeof resources.$inferSelect;
+export type ResourceTag = typeof resourceTags.$inferSelect;

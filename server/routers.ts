@@ -36,6 +36,7 @@ import {
 import { storagePut, storageGetSignedUrl, useVercelBlobStorage, storageMode, storageKeyFromUrl } from "./storage";
 import { s3PresignedPut } from "./s3Storage";
 import { MAX_BASE64_LENGTH, MAX_UPLOAD_BYTES, safeStorageName, validateResourceUpload } from "./resourceSafety";
+import { tagResourceSafe } from "./autoTagger";
 import { createContentReport, listModerationReports, resolveModerationReport } from "./moderationDb";
 import { generateOpenRouterMcq, mcqSchema } from "./openRouterQuiz";
 import { createQuiz, getQuizById, recordQuizAttempt, upsertProgress } from "./quizDb";
@@ -121,7 +122,7 @@ export const appRouter = router({
     }),
   }),
   resource: router({
-    list: publicProcedure.input(z.object({ query: z.string().max(180).optional(), subject: z.string().max(80).optional(), studyLevel: z.string().max(40).optional() }).optional()).query(async ({ ctx, input }) => {
+    list: publicProcedure.input(z.object({ query: z.string().max(180).optional(), subject: z.string().max(80).optional(), studyLevel: z.string().max(40).optional(), tags: z.array(z.string().max(64)).max(8).optional() }).optional()).query(async ({ ctx, input }) => {
       const viewer = await getStudentFromRequest(ctx.req);
       return listResources(input ?? {}, viewer?.id);
     }),
@@ -158,6 +159,9 @@ export const appRouter = router({
       const contentType = input.mimeType || "application/octet-stream";
       const stored = await storagePut(`kuppi/${student.id}/resources/${safeStorageName(input.originalFileName)}`, buffer, contentType);
       const created = await createResource({ authorId: student.id, title: input.title, description: input.description, subject: input.subject, studyLevel: input.studyLevel, stream: input.stream || null, examRelevance: input.examRelevance || null, originalFileName: input.originalFileName, storageKey: stored.key, storageUrl: stored.url, mimeType: contentType, fileSize: buffer.length });
+      // Auto-hashtags are generated inline (bytes already in hand) so the
+      // fresh resource comes back tagged; never fails the upload.
+      await tagResourceSafe({ resourceId: created.resource.id, title: input.title, description: input.description, subject: input.subject, studyLevel: input.studyLevel, mimeType: contentType, storageKey: stored.key, buffer });
       const resource = await getResourceById(created.resource.id, student.id);
       return resource;
     }),
@@ -187,6 +191,8 @@ export const appRouter = router({
       const storageKey = storageKeyFromUrl(input.storageUrl) ?? input.storageUrl;
       const contentType = input.mimeType || "application/octet-stream";
       const created = await createResource({ authorId: student.id, title: input.title, description: input.description, subject: input.subject, studyLevel: input.studyLevel, stream: input.stream || null, examRelevance: input.examRelevance || null, originalFileName: input.originalFileName, storageKey, storageUrl: input.storageUrl, mimeType: contentType, fileSize: input.fileSize });
+      // Direct uploads (presigned/browser) tag from storage on first pass.
+      await tagResourceSafe({ resourceId: created.resource.id, title: input.title, description: input.description, subject: input.subject, studyLevel: input.studyLevel, mimeType: contentType, storageKey });
       const resource = await getResourceById(created.resource.id, student.id);
       return resource;
     }),

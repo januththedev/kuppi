@@ -105,6 +105,10 @@ try {
     });
     const body = await meta.json();
     ok(`meta published ${item.file.name}`, meta.status === 200 && body.resource?.storageKey === item.key, JSON.stringify(body).slice(0, 200));
+    // Auto-hashtags arrive with every publish (LLM when configured,
+    // deterministic fallback otherwise).
+    ok(`meta returns auto-tags ${item.file.name}`, Array.isArray(body.tags) && body.tags.length > 0, JSON.stringify(body.tags));
+    ok(`tags are clean slugs ${item.file.name}`, body.tags.every((tag) => /^[a-z0-9][a-z0-9-]{1,63}$/.test(tag)), JSON.stringify(body.tags));
   }
 
   const htmlRow = published[1];

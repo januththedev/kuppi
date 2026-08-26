@@ -5,6 +5,7 @@ import {
   resourceLikes,
   resources,
   resourceSaves,
+  resourceTags,
   resourceProgress,
   resourceViews,
   studentUsers,
@@ -63,37 +64,63 @@ async function decorateResources(rows: ResourceRow[], viewerId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
   const ids = rows.map((row) => row.resource.id);
-  const [likes, saves, viewerLikes, viewerSaves, commentCounts] = await Promise.all([
+  const [likes, saves, viewerLikes, viewerSaves, commentCounts, tagRows] = await Promise.all([
     db.select({ resourceId: resourceLikes.resourceId, total: sql<number>`count(*)` }).from(resourceLikes).where(inArray(resourceLikes.resourceId, ids)).groupBy(resourceLikes.resourceId),
     db.select({ resourceId: resourceSaves.resourceId, total: sql<number>`count(*)` }).from(resourceSaves).where(inArray(resourceSaves.resourceId, ids)).groupBy(resourceSaves.resourceId),
     viewerId ? db.select({ resourceId: resourceLikes.resourceId }).from(resourceLikes).where(and(eq(resourceLikes.userId, viewerId), inArray(resourceLikes.resourceId, ids))) : Promise.resolve([]),
     viewerId ? db.select({ resourceId: resourceSaves.resourceId }).from(resourceSaves).where(and(eq(resourceSaves.userId, viewerId), inArray(resourceSaves.resourceId, ids))) : Promise.resolve([]),
     db.select({ resourceId: resourceComments.resourceId, total: sql<number>`count(*)` }).from(resourceComments).where(inArray(resourceComments.resourceId, ids)).groupBy(resourceComments.resourceId),
+    db.select({ resourceId: resourceTags.resourceId, tag: resourceTags.tag }).from(resourceTags).where(inArray(resourceTags.resourceId, ids)),
   ]);
   const likeCounts = countMap(likes);
   const saveCounts = countMap(saves);
   const commentCountMap = countMap(commentCounts);
   const likedIds = new Set(viewerLikes.map((item) => item.resourceId));
   const savedIds = new Set(viewerSaves.map((item) => item.resourceId));
+  const tagsById = new Map<number, string[]>();
+  for (const { resourceId, tag } of tagRows) {
+    const list = tagsById.get(resourceId) ?? [];
+    list.push(tag);
+    tagsById.set(resourceId, list);
+  }
   return rows.map(({ resource, author }) => ({
-    ...resource,
+    // extractedText is deliberately stripped: it can hold megabytes of cached
+    // document text and must never ride along in API responses (the v1/AI
+    // content endpoint reads it straight from the table instead).
+    ...stripExtractedText(resource),
     author: publicStudent(author),
     likeCount: likeCounts.get(resource.id) ?? 0,
     saveCount: saveCounts.get(resource.id) ?? 0,
     commentCount: commentCountMap.get(resource.id) ?? 0,
     viewerHasLiked: likedIds.has(resource.id),
     viewerHasSaved: savedIds.has(resource.id),
+    tags: (tagsById.get(resource.id) ?? []).sort(),
   }));
 }
 
-export async function listResources(input: { query?: string; subject?: string; studyLevel?: string }, viewerId?: number) {
+function stripExtractedText(resource: Resource): Omit<Resource, "extractedText" | "extractedAt"> {
+  const { extractedText: _text, extractedAt: _at, ...rest } = resource;
+  return rest;
+}
+
+export async function listResources(input: { query?: string; subject?: string; studyLevel?: string; tags?: string[] }, viewerId?: number) {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
   const clauses = [];
   const query = input.query?.trim();
   if (query) {
     const term = `%${query.replace(/[%_]/g, "\\$&")}%`;
-    clauses.push(or(like(resources.title, term), like(resources.description, term), like(resources.subject, term), like(resources.stream, term))!);
+    // extractedText lets queries match words inside PDF/image notes once the
+    // auto-tagger has cached their plain text.
+    clauses.push(or(like(resources.title, term), like(resources.description, term), like(resources.subject, term), like(resources.stream, term), like(resources.extractedText, term))!);
+  }
+  // Any-match hashtag filter: resolve ids from resourceTags first, then
+  // intersect with the rest of the clauses.
+  const requestedTags = (input.tags ?? []).map((tag) => tag.trim().toLowerCase().replace(/^#+/, "")).filter(Boolean).slice(0, 8);
+  if (requestedTags.length) {
+    const taggedIds = await db.select({ id: resourceTags.resourceId }).from(resourceTags).where(inArray(resourceTags.tag, requestedTags)).groupBy(resourceTags.resourceId);
+    if (!taggedIds.length) return [];
+    clauses.push(inArray(resources.id, taggedIds.map((row) => row.id)));
   }
   if (input.subject && input.subject !== "All") clauses.push(eq(resources.subject, input.subject));
   if (input.studyLevel && input.studyLevel !== "All") clauses.push(eq(resources.studyLevel, input.studyLevel));

@@ -145,7 +145,9 @@ async function main() {
       try {
         const resource = await uploadOne(opts.url, token, file, { subject: opts.subject, level: opts.level, description: opts.description || "" });
         results.ok.push(file);
-        console.log("  ✔ " + file + "  ->  /r/" + resource.id);
+        const tags = Array.isArray(resource.tags) ? resource.tags : [];
+        const tagNote = tags.length ? "   tagged: " + tags.map(function (t) { return "#" + t; }).join(" ") : "";
+        console.log("  \u2714 " + file + "  ->  /r/" + resource.id + tagNote);
       } catch (error) {
         results.failed.push(file);
         console.error("  ✘ " + file + ": " + error.message);

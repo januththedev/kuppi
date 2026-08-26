@@ -14,6 +14,7 @@ import { createResource, getStudentByUsername } from "./kuppiDb";
 import { storageKeyFromUrl, storageMode } from "./storage";
 import { s3PresignedPut } from "./s3Storage";
 import { MAX_UPLOAD_BYTES, safeStorageName } from "./resourceSafety";
+import { tagResourceSafe } from "./autoTagger";
 import { CLI_SCRIPT_SOURCE } from "./cliScript";
 
 export function registerCliUploadRoutes(app: Express) {
@@ -123,7 +124,15 @@ export function registerCliUploadRoutes(app: Express) {
         mimeType: String(body.mimeType ?? "application/octet-stream").slice(0, 160),
         fileSize,
       });
-      res.json({ resource: created.resource });
+      // Auto-hashtags from content; returned separately so the terminal
+      // script can print them. Best-effort — never blocks the publish.
+      const tags = await tagResourceSafe({
+        resourceId: created.resource.id,
+        title, description, subject, studyLevel,
+        mimeType: created.resource.mimeType,
+        storageKey: created.resource.storageKey,
+      });
+      res.json({ resource: created.resource, tags });
     } catch (error) {
       console.error("[CliUpload] meta failed:", error);
       res.status(400).json({ error: { message: error instanceof Error ? error.message : "Kuppi could not publish that upload." } });
