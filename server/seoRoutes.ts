@@ -142,6 +142,9 @@ export function registerSeoRoutes(app: Express) {
             body: `<main><h1>What is a kuppi — and why we built a library around it</h1>
 <p>In Sri Lanka, a <strong>kuppi</strong> is the small study circle students form when exam pressure hits — everyone teaching everyone else what they finally understood. The word means a little lamp: something small that holds light and passes it on.</p>
 <p><strong>Kuppi the platform</strong> is a free library where Sri Lankan students share the study material that actually helped them — notes, past papers, revision guides, worksheets and quizzes for Combined Maths, Physics, Chemistry, Biology, Economics and more, for A/L and O/L. Every file was uploaded by a real student. Preview in your browser, download free, and pass your own understanding forward.</p>
+<h2>Power tools</h2>
+<p><strong>Bulk upload from your terminal:</strong> download <code>kuppi-upload.mjs</code> from <code>${SITE}/api/cli/script</code> and run <code>node kuppi-upload.mjs --user YOUR_USERNAME notes/*.pdf --subject "Physics" --level "A/L"</code>. Every file gets its own shareable page and auto-generated hashtags.</p>
+<p><strong>Any AI can read the library:</strong> Kuppi runs an MCP server at <code>${SITE}/api/mcp</code> — Claude Desktop, Codex and Cursor can search notes by hashtag, read them in-chat, and cite links. Reads are free; publishing from an AI uses your Kuppi login token.</p>
 <p>Kuppi was created by <a href="https://www.januth.dev">Januth Nimnal</a>.</p></main>`,
           }));
         }

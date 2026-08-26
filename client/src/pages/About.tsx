@@ -43,6 +43,24 @@ export default function About() {
           <li><strong>Past-paper walkthroughs and model papers</strong> shared by students who sat the exams</li>
           <li><strong>Interactive HTML quizzes and notes</strong> that render right in your browser</li>
         </ul>
+        <h2 style={{ fontFamily: '"Fraunces", serif', fontSize: 26, margin: "26px 0 12px" }}>Power tools</h2>
+        <p style={{ color: "#4c4556", fontSize: 15, lineHeight: 1.8, marginBottom: 8 }}>
+          <strong>Upload many files at once from your terminal.</strong> Sign in with your Kuppi account,
+          download the uploader once, and point it at your files — each one gets its own shareable
+          page and auto-generated hashtags.
+        </p>
+        <code className="about-code">{"# download the uploader once\ncurl -fsSL https://kuppi.orinai.org/api/cli/script -o kuppi-upload.mjs\n\n# publish a whole folder (you'll be prompted for your password)\nnode kuppi-upload.mjs --user YOUR_USERNAME notes/*.pdf --subject \"Physics\" --level \"A/L\""}</code>
+        <p style={{ color: "#4c4556", fontSize: 15, lineHeight: 1.8, marginBottom: 8 }}>
+          <strong>Connect any AI to the library.</strong> Kuppi runs an MCP server, so Claude Desktop,
+          Codex or Cursor can search notes by hashtag, read them, and cite links — no account needed
+          to read. Add this to your AI's MCP settings:
+        </p>
+        <code className="about-code">{'{ "mcpServers": { "kuppi": { "url": "https://kuppi.orinai.org/api/mcp" } } }'}</code>
+        <p style={{ color: "#4c4556", fontSize: 15, lineHeight: 1.8, marginBottom: 20 }}>
+          Want the AI to publish too? Get a token with <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>POST https://kuppi.orinai.org/api/cli/login</code>{" "}
+          and add <code style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>"headers": {"{ \"Authorization\": \"Bearer <token>\" }"}</code> next to the URL. Full details in the{" "}
+          <a href="https://github.com/januththedev/kuppi/blob/main/docs/mcp.md" target="_blank" rel="noreferrer" style={{ color: "#5b35e8", fontWeight: 700 }}>MCP guide</a>.
+        </p>
         <p style={{ color: "#4c4556", fontSize: 15, lineHeight: 1.8, marginBottom: 26 }}>
           Kuppi was created and is maintained by <a href="https://www.januth.dev" target="_blank" rel="noreferrer" style={{ color: "#5b35e8", fontWeight: 700 }}>Januth Nimnal</a>.
         </p>
