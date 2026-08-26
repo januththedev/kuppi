@@ -6,6 +6,7 @@ import {
   heuristicTags,
   normalizeTags,
   parseTagReply,
+  htmlToVisibleText,
   slugifyTag,
 } from "./autoTagger";
 
@@ -78,5 +79,15 @@ describe("directTextMime", () => {
 describe("extraction budget", () => {
   it("skips oversized binaries", () => {
     expect(MAX_EXTRACTION_BYTES).toBeGreaterThan(0);
+  });
+});
+
+describe("htmlToVisibleText", () => {
+  it("strips markup so SVG/HTML element names never become hashtags", () => {
+    const html = `<html><head><style>.a{fill:red}</style></head><body><h1>Wave Motion</h1><svg><path d="M0 0" stroke="#fff"/></svg><script>var x=1;</script><p>Frequency &amp; wavelength notes</p></body></html>`;
+    const text = htmlToVisibleText(html);
+    expect(text).not.toMatch(/\b(stroke|path|fill|style|script)\b/);
+    expect(text).toContain("Wave Motion");
+    expect(text).toContain("wavelength");
   });
 });

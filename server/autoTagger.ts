@@ -113,6 +113,18 @@ export function directTextMime(mimeType: string): boolean {
   return /^(text\/|application\/json|application\/xml)/i.test(mimeType);
 }
 
+/** Visible text of an HTML document: scripts/styles/tags/entities removed. */
+export function htmlToVisibleText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&[a-z][a-z0-9]*;|&#\d+;|&#x[0-9a-f]+;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function fetchResourceBuffer(storageKey: string): Promise<Buffer> {
   if (useLocalStorageSync()) return storageReadBuffer(storageKey);
   const signedUrl = await storageGetSignedUrl(storageKey);
@@ -130,6 +142,7 @@ export async function extractNoteText(resource: { storageKey: string; mimeType: 
   try {
     const bytes = buffer ?? await fetchResourceBuffer(resource.storageKey);
     if (!bytes.length || bytes.length > MAX_EXTRACTION_BYTES) return "";
+    if (/text\/html/i.test(resource.mimeType)) return htmlToVisibleText(bytes.toString("utf8"));
     if (directTextMime(resource.mimeType)) return bytes.toString("utf8");
     if (resource.mimeType === "application/pdf") {
       const { PDFParse } = await import("pdf-parse");
@@ -172,8 +185,10 @@ export async function ensureExtractedText(resource: Pick<Resource, "id" | "stora
 function replaceTags(resourceId: number, tags: string[]) {
   return getDb().then(async (db) => {
     if (!db) return;
+    // Always clear existing rows first — a re-tag that derives zero tags must
+    // not leave the previous set behind.
+    await db.delete(resourceTags).where(eq(resourceTags.resourceId, resourceId));
     if (tags.length) {
-      await db.delete(resourceTags).where(eq(resourceTags.resourceId, resourceId));
       await db.insert(resourceTags).values(tags.map((tag) => ({ resourceId, tag })));
     }
   });

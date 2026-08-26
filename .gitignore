@@ -137,3 +137,6 @@ dist-api/
 
 # Kuppi ops: local DB url cache
 .kuppi-db-url.tmp
+
+# Kuppi ops: prod storage creds cache
+.prod-s3.env
