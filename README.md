@@ -70,6 +70,37 @@ See [DEPLOY_VERCEL.md](./DEPLOY_VERCEL.md) — the repo ships with a serverless 
 - See [AUDIT.md](./AUDIT.md) for the latest code audit and [CHANGELOG.md](./CHANGELOG.md)
   for notable changes.
 
+## Quick how-to
+
+**Batch-upload docs from the terminal (login required):**
+
+```bash
+curl -fsSL https://kuppi.orinai.org/api/cli/script -o kuppi-upload.mjs   # PowerShell: curl.exe -fsSL "..." -o kuppi-upload.mjs
+node kuppi-upload.mjs --user YOUR_USERNAME file1.pdf notes2.html
+```
+
+You'll be prompted for your password (or set `KUPPI_PASS`). Useful flags:
+`--subject "Physics" --level "A/L" --jobs 5`. Every file gets its own `/r/{id}`
+page and auto-generated hashtags, printed as they publish.
+
+**Use Kuppi from any AI (MCP):**
+
+```json
+{ "mcpServers": { "kuppi": { "url": "https://kuppi.orinai.org/api/mcp" } } }
+```
+
+Drop that into Claude Desktop / Codex / Cursor MCP settings — no account is
+needed to read. Then ask things like *"search Kuppi for #thermal-physics"*,
+*"read Kuppi note 12 and explain it"*, or *"find notes on the Calvin cycle
+and give me the links"*. To let the AI **upload** too, grab a token:
+
+```bash
+curl -X POST https://kuppi.orinai.org/api/cli/login -H "Content-Type: application/json" -d '{"username":"...","password":"..."}'
+```
+
+and add `"headers": { "Authorization": "Bearer <token>" }` to the config
+(valid 14 days).
+
 ## Docs MCP (AI clients)
 
 Kuppi runs a remote MCP server at `/api/mcp`. Any AI (Claude Desktop, Codex,
